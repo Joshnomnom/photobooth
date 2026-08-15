@@ -4,10 +4,24 @@ import { useEffect, useRef, useState } from "react";
 
 type Shot = { id: number; src: string };
 const FILTERS = [
-  { name: "Natural", value: "none", preview: "#dcc2a6" },
-  { name: "B&W", value: "grayscale(1) contrast(1.08)", preview: "#9c9c9c" },
-  { name: "Warm", value: "sepia(.22) saturate(1.18)", preview: "#d99b63" },
-  { name: "Cool", value: "hue-rotate(185deg) saturate(.85)", preview: "#8cafbd" },
+  { name: "Original", value: "none", preview: "#ffd8b4" },
+  { name: "Candy", value: "saturate(1.35) brightness(1.05)", preview: "#ff8fb1" },
+  { name: "Dreamy", value: "sepia(.12) saturate(.85) brightness(1.12)", preview: "#d6c4ff" },
+  { name: "Sunny", value: "sepia(.24) saturate(1.25)", preview: "#ffd45c" },
+  { name: "Blueberry", value: "hue-rotate(178deg) saturate(.82)", preview: "#8ed4ff" },
+  { name: "Sketch", value: "grayscale(1) contrast(1.25) brightness(1.12)", preview: "#9b9b9b" },
+];
+const THEMES = [
+  { name: "Strawberry", id: "berry", color: "#ff8eaa", emoji: "🍓" },
+  { name: "Sky", id: "sky", color: "#84d7f4", emoji: "☁️" },
+  { name: "Lemon", id: "lemon", color: "#ffd95c", emoji: "☀️" },
+  { name: "Grape", id: "grape", color: "#b8a1ee", emoji: "🍇" },
+];
+const BORDERS = [
+  { name: "Wiggle", id: "wiggle" },
+  { name: "Dots", id: "dots" },
+  { name: "Rainbow", id: "rainbow" },
+  { name: "Notebook", id: "notebook" },
 ];
 
 export default function Home() {
@@ -19,6 +33,8 @@ export default function Home() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [cameraError, setCameraError] = useState("");
   const [starting, setStarting] = useState(false);
+  const [theme, setTheme] = useState(THEMES[0]);
+  const [border, setBorder] = useState(BORDERS[0]);
 
   useEffect(() => () => stream?.getTracks().forEach((track) => track.stop()), [stream]);
 
@@ -53,26 +69,34 @@ export default function Home() {
     const strip = document.createElement("canvas"), width = 900, pad = 38, photoH = 600;
     strip.width = width; strip.height = pad + shots.length * (photoH + pad) + 120;
     const ctx = strip.getContext("2d"); if (!ctx) return;
-    ctx.fillStyle = "#f7f1e7"; ctx.fillRect(0, 0, strip.width, strip.height);
+    ctx.fillStyle = theme.id === "sky" ? "#eaf9ff" : theme.id === "lemon" ? "#fff9d9" : theme.id === "grape" ? "#f1ebff" : "#fff0f3"; ctx.fillRect(0, 0, strip.width, strip.height);
     Promise.all(shots.map((shot) => new Promise<HTMLImageElement>((resolve) => { const img = new Image(); img.onload = () => resolve(img); img.src = shot.src; }))).then((images) => {
-      images.forEach((img, index) => ctx.drawImage(img, pad, pad + index * (photoH + pad), width - pad * 2, photoH));
+      images.forEach((img, index) => {
+        const y = pad + index * (photoH + pad);
+        ctx.drawImage(img, pad, y, width - pad * 2, photoH);
+        ctx.lineWidth = border.id === "rainbow" ? 18 : 10;
+        ctx.strokeStyle = border.id === "rainbow" ? theme.color : "#51423b";
+        if (border.id === "dots") ctx.setLineDash([5, 18]); else if (border.id === "notebook") ctx.setLineDash([22, 10]); else ctx.setLineDash([]);
+        ctx.strokeRect(pad, y, width - pad * 2, photoH);
+      });
       ctx.fillStyle = "#1f1d1a"; ctx.font = "600 28px Arial"; ctx.textAlign = "center";
       ctx.fillText("THE SNAP ROOM  •  GOOD MOMENTS ONLY", width / 2, strip.height - 58);
       const link = document.createElement("a"); link.download = "snap-room-photo-strip.jpg"; link.href = strip.toDataURL("image/jpeg", .94); link.click();
     });
   }
 
-  return <main>
-    <nav><a className="brand" href="#top">THE SNAP ROOM</a><div className="nav-links"><a href="#how">HOW IT WORKS</a><a href="#about">ABOUT</a><a href="#faq">FAQ</a></div><a className="nav-cta" href="#booth">OPEN THE BOOTH</a></nav>
-    <section className="hero" id="top"><div className="eyebrow">YOUR CAMERA • YOUR MOMENT</div><h1>STEP IN.<br/><em>SNAP AWAY.</em></h1><p className="hero-copy">A tiny photo booth living right in your browser. No sign-up, no uploads—just you, a timer, and three good shots.</p><a className="primary" href="#booth">START THE CAMERA <span>→</span></a><div className="scribble">good moments only ↗</div></section>
+  return <main className={`theme-${theme.id}`}>
+    <nav><a className="brand" href="#top">✿ THE SNAP ROOM</a><div className="nav-links"><a href="#how">HOW IT WORKS</a><a href="#about">ABOUT</a><a href="#faq">FAQ</a></div><a className="nav-cta" href="#booth">OPEN THE BOOTH ♡</a></nav>
+    <section className="hero" id="top"><div className="doodle doodle-star">☆</div><div className="doodle doodle-flower">✿</div><div className="eyebrow">YOUR CAMERA • YOUR LITTLE MOMENT</div><h1>SMILE,<br/><em>cutie!</em></h1><p className="hero-copy">A tiny, cozy photo booth drawn just for you. Pick your colors, decorate your frames, and make three happy memories.</p><a className="primary" href="#booth">LET&apos;S TAKE PICS <span>→</span></a><div className="scribble">made with crayons + love ♡</div></section>
     <section className="booth-section" id="booth">
-      <div className="section-intro"><span>01 / THE BOOTH</span><h2>Ready when<br/>you are.</h2><p>Pick a look, strike a pose, and let the countdown do the rest.</p></div>
-      <div className="booth-shell"><div className="camera-stage"><video ref={videoRef} autoPlay playsInline muted style={{filter:filter.value}}/>{!stream&&<div className="camera-empty"><div className="lens">◎</div><p>Your camera preview will appear here.</p><button onClick={startCamera} disabled={starting}>{starting?"OPENING…":"ALLOW CAMERA"}</button>{cameraError&&<small>{cameraError}</small>}</div>}{countdown!==null&&<div className="countdown">{countdown}</div>}<div className="live-tag">{stream?"● LIVE":"CAMERA OFF"}</div></div>
-        <div className="controls"><div className="filters" aria-label="Photo filter">{FILTERS.map(item=><button key={item.name} className={filter.name===item.name?"active":""} onClick={()=>setFilter(item)} aria-label={`Use ${item.name} filter`}><i style={{background:item.preview}}/>{item.name}</button>)}</div><button className="shutter" onClick={takePhoto} disabled={!stream||countdown!==null} aria-label="Take photo"><span/></button><div className="shot-count">{shots.length} / 3 SHOTS</div></div>
+      <div className="section-intro"><span>01 / DRESS IT UP</span><h2>Make it<br/><em>yours.</em></h2><p>Choose a color mood, a camera filter, and a hand-drawn frame before you pose.</p></div>
+      <div className="booth-shell"><div className={`camera-stage border-${border.id}`}><video ref={videoRef} autoPlay playsInline muted style={{filter:filter.value}}/>{!stream&&<div className="camera-empty"><div className="lens">☻</div><p>Your cute face goes here!</p><button onClick={startCamera} disabled={starting}>{starting?"OPENING…":"TURN ON CAMERA ♡"}</button>{cameraError&&<small>{cameraError}</small>}</div>}{countdown!==null&&<div className="countdown">{countdown}</div>}<div className="live-tag">{stream?"● SMILE!":"CAMERA NAPPING"}</div></div>
+        <div className="customizer"><div className="option-group"><strong>COLOR THEME</strong><div className="theme-picker">{THEMES.map(item=><button key={item.id} className={theme.id===item.id?"active":""} style={{"--swatch":item.color} as React.CSSProperties} onClick={()=>setTheme(item)} aria-label={`Use ${item.name} theme`}><span>{item.emoji}</span>{item.name}</button>)}</div></div><div className="option-group"><strong>PHOTO FILTER</strong><div className="filters" aria-label="Photo filter">{FILTERS.map(item=><button key={item.name} className={filter.name===item.name?"active":""} onClick={()=>setFilter(item)} aria-label={`Use ${item.name} filter`}><i style={{background:item.preview}}/>{item.name}</button>)}</div></div><div className="option-group"><strong>FRAME BORDER</strong><div className="border-picker">{BORDERS.map(item=><button key={item.id} className={border.id===item.id?`active mini-${item.id}`:`mini-${item.id}`} onClick={()=>setBorder(item)}>{item.name}</button>)}</div></div></div>
+        <div className="controls"><div className="tiny-note">3... 2... 1...<br/>then magic!</div><button className="shutter" onClick={takePhoto} disabled={!stream||countdown!==null} aria-label="Take photo"><span>♡</span></button><div className="shot-count">{shots.length} / 3<br/>HAPPY SHOTS</div></div>
       </div><canvas ref={canvasRef} hidden/>
     </section>
     <section className="strip-section" id="how"><div className="strip-copy"><span>02 / YOUR STRIP</span><h2>Three frames.<br/><em>One memory.</em></h2><p>Your photos never leave this device. Download the strip, keep it forever, or clear the booth and go again.</p><div className="privacy">✦ PRIVATE BY DESIGN<br/><small>Nothing is uploaded or stored.</small></div></div>
-      <div className="photo-strip">{Array.from({length:3}).map((_,index)=>shots[index]?<img key={shots[index].id} src={shots[index].src} alt={`Your captured photo ${index+1}`}/>:<div className="placeholder" key={index}><b>{index+1}</b><span>YOUR PHOTO</span></div>)}<div className="strip-mark">THE SNAP ROOM<br/><small>{new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase()}</small></div></div>
+      <div className={`photo-strip border-${border.id}`}>{Array.from({length:3}).map((_,index)=>shots[index]?<img key={shots[index].id} src={shots[index].src} alt={`Your captured photo ${index+1}`}/>:<div className="placeholder" key={index}><b>{["♡","☆","☻"][index]}</b><span>PHOTO {index+1}</span></div>)}<div className="strip-mark">✿ THE SNAP ROOM ✿<br/><small>{new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase()} • SO CUTE!</small></div></div>
       <div className="strip-actions"><button onClick={downloadStrip} disabled={!shots.length}>DOWNLOAD STRIP ↓</button><button className="secondary" onClick={()=>setShots([])} disabled={!shots.length}>START OVER ↻</button></div>
     </section>
     <section className="steps" id="about"><span>03 / EASY AS...</span><div className="step-grid"><article><b>1</b><h3>ALLOW</h3><p>Give the booth camera access. It stays local to your browser.</p></article><article><b>2</b><h3>POSE</h3><p>Choose a filter and watch the short countdown.</p></article><article><b>3</b><h3>KEEP</h3><p>Download your finished photo strip in one click.</p></article></div></section>
