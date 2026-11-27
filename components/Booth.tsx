@@ -5,7 +5,7 @@ import { type Decorations, EMPTY_DECORATIONS } from "@/lib/decorations";
 import { CANVAS_FONTS } from "@/lib/fonts";
 import type { Shot } from "@/lib/look";
 import { randomSeed } from "@/lib/random";
-import { DEFAULT_SETTINGS, type Settings, resolve } from "@/lib/settings";
+import { DEFAULT_SETTINGS, loadSettings, resolve, saveSettings, type Settings } from "@/lib/settings";
 import { play, unlockAudio } from "@/lib/sound";
 import { shotCount, type StripOptions } from "@/lib/strip";
 import { BoothInterior } from "./BoothInterior";
@@ -37,20 +37,32 @@ export function Booth() {
   const [showDate, setShowDate] = useState(true);
   const [decorations, setDecorations] = useState<Decorations>(EMPTY_DECORATIONS);
 
-  const { machine, layout, paper } = resolve(settings);
+  const { machine, layout, paper, style, sound } = resolve(settings);
+
+  // Remember the setup in this browser. Loading has to wait until after hydration.
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const saved = loadSettings();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved) setSettings(saved);
+    setLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (loaded) saveSettings(settings);
+  }, [settings, loaded]);
 
   const strip: StripOptions = useMemo(
     () => ({
       layout,
       paper,
-      style: machine.strip,
+      style,
       shots: shots.map((s) => s?.canvas ?? null),
       caption,
       showDate,
       fonts: CANVAS_FONTS,
       seed,
     }),
-    [layout, paper, machine, shots, caption, showDate, seed],
+    [layout, paper, style, shots, caption, showDate, seed],
   );
 
   // Each room sets its own light on the page (see "Rooms" in globals.css).
@@ -106,7 +118,7 @@ export function Booth() {
       {stage === "booth" && (
         <BoothInterior settings={settings} shots={shots} seed={seed} onShot={onShot} onPrint={toPrinting} onExit={toOutside} />
       )}
-      {stage === "printing" && <Darkroom strip={strip} machine={machine} onCollect={toCollected} />}
+      {stage === "printing" && <Darkroom strip={strip} machine={machine} sound={sound} onCollect={toCollected} />}
       {stage === "collected" && (
         <Collected
           strip={strip}

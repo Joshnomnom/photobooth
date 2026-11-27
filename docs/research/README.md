@@ -24,6 +24,8 @@ Research done 2026-11-27. Detail and sources are in the numbered docs.
 
 | 12 | Art direction is one big idea that every screen serves; ours lacks one. The booth has a real art history (Surrealists' "automatic writing", Warhol's strips as tiny films) and photos naturally travel booth → darkroom → gallery. | Proposal: "The Snap Room" becomes a building of rooms, each stage with its own light, sound and texture. | [05](05-art-direction.md) |
 
+| 13 | Beyond style, people want outcomes: a keepsake, instant sharing in social sizes, motion (GIF/boomerang), occasion frames, fun together, and to know what they'll get. | Biggest gaps: Story/post formats, live motion, occasion themes. | [07](07-user-outcomes.md) |
+
 ## What this means
 
 1. **Build the ritual:** step in, countdown, flash, the strip prints and develops, you collect it.

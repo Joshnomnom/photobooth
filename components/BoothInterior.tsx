@@ -38,8 +38,7 @@ function wait(ms: number, signal: AbortSignal) {
 export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }: Props) {
   const camera = useCamera();
   const { start: startCamera } = camera;
-  const { machine, layout, filter } = resolve(settings);
-  const profile = machine.sound;
+  const { machine, layout, filter, sound: profile, countdown: countdownSecs, gapMs } = resolve(settings);
   const look = lookFor(filter);
   const film = settings.mode === "film";
   const total = shotCount(layout);
@@ -84,7 +83,8 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         const slot = current.findIndex((s) => !s);
         if (slot === -1) break;
         setPosing(slot);
-        const count = first ? Number(settings.timer) : Math.min(3, Number(settings.timer));
+        // First pose uses the chosen countdown; later poses at most 3 s (or none when the countdown is off).
+        const count = first ? countdownSecs : Math.min(3, countdownSecs);
         for (let n = count; n > 0; n--) {
           setCountdown(n);
           play("tick", { profile });
@@ -99,7 +99,10 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         onShot(slot, shot);
         first = false;
         if (!film) break;
-        await wait(1100, ctrl.signal);
+        // Show the next pose's prompt during the gap, so there's time to get ready even with no countdown.
+        const next = latest.current.shots.findIndex((s) => !s);
+        if (next !== -1) setPosing(next);
+        await wait(gapMs, ctrl.signal);
       }
       setPosing(null);
       if (film && latest.current.shots.every(Boolean)) {
@@ -114,7 +117,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
       setPosing(null);
       setRunning(false);
     }
-  }, [camera.videoRef, settings.timer, seed, film, onShot, onPrint, profile]);
+  }, [camera.videoRef, countdownSecs, gapMs, seed, film, onShot, onPrint, profile]);
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);
 
@@ -201,7 +204,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
           <div className="film-vignette pointer-events-none absolute inset-0" style={{ opacity: Math.min(1, look.vignette * 2) }} aria-hidden />
           <div className="film-grain pointer-events-none absolute inset-0" style={{ opacity: Math.min(0.45, look.grain * 2.2) }} aria-hidden />
 
-          {posing !== null && (
+          {posing !== null && settings.prompts && (
             <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent p-4 text-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/70">
                 Pose {posing + 1} of {total}
@@ -247,7 +250,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
 
       {/* Controls */}
       <footer className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <ol className="mx-auto mb-4 flex justify-center gap-2" aria-label="Photos taken">
+        <ol className="mx-auto mb-4 flex max-w-xl flex-wrap justify-center gap-2" aria-label="Photos taken">
           {shots.map((shot, i) => (
             <li key={i} className="relative aspect-[4/3] w-12 overflow-hidden rounded border border-white/15 bg-white/5 sm:w-16">
               {shot ? (
@@ -311,7 +314,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         <p className="mt-3 min-h-4 text-center text-xs text-white/50">{hint}</p>
       </footer>
 
-      {flashKey > 0 && <div key={flashKey} className="animate-flash pointer-events-none fixed inset-0 z-[60]" style={{ background: machine.flash }} aria-hidden />}
+      {flashKey > 0 && settings.flash && <div key={flashKey} className="animate-flash pointer-events-none fixed inset-0 z-[60]" style={{ background: machine.flash }} aria-hidden />}
     </div>
   );
 }

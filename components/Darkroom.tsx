@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Machine } from "@/lib/machines";
-import { play } from "@/lib/sound";
+import { play, type SoundProfile } from "@/lib/sound";
 import { drawStrip, type StripOptions } from "@/lib/strip";
 
-type Props = { strip: StripOptions; machine: Machine; onCollect: () => void };
+type Props = { strip: StripOptions; machine: Machine; sound: SoundProfile; onCollect: () => void };
 
 type Phase = "dropping" | "developing" | "developed" | "lit";
 
@@ -17,7 +17,7 @@ const DEVELOPED_MS = 8400; // matches the .develop animation (delay + duration) 
  * the developer tray and slowly appears. Then you switch the lights on and the
  * real colors show. Real props: film-strip.webp and darkroom-timer.webp (CC0).
  */
-export function Darkroom({ strip, machine, onCollect }: Props) {
+export function Darkroom({ strip, machine, sound, onCollect }: Props) {
   const blankRef = useRef<HTMLCanvasElement>(null);
   const finalRef = useRef<HTMLCanvasElement>(null);
   const actionRef = useRef<HTMLButtonElement>(null);
@@ -35,7 +35,7 @@ export function Darkroom({ strip, machine, onCollect }: Props) {
   }, [strip]);
 
   useEffect(() => {
-    play("whirr", { profile: machine.sound, duration: 0.9 });
+    play("whirr", { profile: sound, duration: 0.9 });
     const t1 = window.setTimeout(() => {
       play("drop");
       setPhase((p) => (p === "dropping" ? "developing" : p));
@@ -45,7 +45,7 @@ export function Darkroom({ strip, machine, onCollect }: Props) {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [machine.sound]);
+  }, [sound]);
 
   const skip = useCallback(() => {
     setSkipped(true);

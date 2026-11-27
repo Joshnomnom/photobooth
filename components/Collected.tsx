@@ -5,7 +5,7 @@ import { type Decorations, EMPTY_DECORATIONS, isEmpty, placeSticker } from "@/li
 import { downloadBlob, fileStamp } from "@/lib/download";
 import { makeFlipbook } from "@/lib/flipbook";
 import type { Fonts } from "@/lib/fonts";
-import type { Machine } from "@/lib/machines";
+import { type Machine, MACHINES } from "@/lib/machines";
 import { printSheet } from "@/lib/printSheet";
 import { pinStrip } from "@/lib/scrapbook";
 import { play } from "@/lib/sound";
@@ -33,6 +33,14 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
   const [error, setError] = useState("");
   const [tool, setTool] = useState<Tool>("stickers");
   const [penColor, setPenColor] = useState(machine.pens[0]);
+  // Sticker sheet: this machine's by default; any machine's sheet, or all of them, to mix.
+  const [sheet, setSheet] = useState<string>(machine.id);
+  const sheetStickers =
+    sheet === "all"
+      ? MACHINES.flatMap((m) => m.stickers).filter((k, i, all) => all.indexOf(k) === i)
+      : (MACHINES.find((m) => m.id === sheet) ?? machine).stickers;
+  // Pens: the machine's colors first, then everyone else's.
+  const pens = [...machine.pens, ...MACHINES.flatMap((m) => m.pens)].filter((c, i, all) => all.indexOf(c) === i);
   const [penThick, setPenThick] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [past, setPast] = useState<Decorations[]>([]);
@@ -247,9 +255,24 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
 
         {tool === "stickers" ? (
           <div>
-            <span className={label}>Sticker sheet · {machine.year}</span>
+            <div className="mb-2 flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Sticker sheet">
+              {[...MACHINES.map((m) => ({ id: m.id, text: m.year })), { id: "all", text: "All" }].map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={sheet === t.id}
+                  onClick={() => setSheet(t.id)}
+                  className={`h-7 rounded-full border px-2.5 text-xs transition ${
+                    sheet === t.id ? "border-ink bg-ink text-card" : "border-line bg-card/70 hover:border-ink/40"
+                  }`}
+                >
+                  {t.id === "all" ? "All sheets" : <span className="font-display italic">{t.text}</span>}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-5 gap-2">
-              {machine.stickers.map((kind) => (
+              {sheetStickers.map((kind) => (
                 <button
                   key={kind}
                   type="button"
@@ -289,7 +312,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
             <div>
               <span className={label}>Pen color</span>
               <div role="radiogroup" aria-label="Pen color" className="flex flex-wrap gap-2">
-                {machine.pens.map((c) => (
+                {pens.map((c) => (
                   <button
                     key={c}
                     type="button"

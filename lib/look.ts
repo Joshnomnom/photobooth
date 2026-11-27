@@ -48,7 +48,8 @@ export function capturePhoto(video: HTMLVideoElement, filter: Filter, mirror: bo
   return { canvas, thumb: makeThumb(canvas) };
 }
 
-function develop(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, filter: Filter, seed: number) {
+/** Applies the full film look to whatever is on the canvas (used for captures and the setup preview). */
+export function develop(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, filter: Filter, seed: number) {
   const { width: w, height: h } = canvas;
   const look = lookFor(filter);
   const rand = rng(seed);

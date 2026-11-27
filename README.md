@@ -26,6 +26,7 @@ The site is a building of rooms: **street → booth → darkroom → studio tabl
 | --- | --- |
 | `components/Booth.tsx` | Stage orchestrator, session state |
 | `components/Outside.tsx` | The street: row of booths (swipe/scroll), setup board, gallery door |
+| `components/SetupPreview.tsx` | Live "what you'll get" strip preview in the setup panel |
 | `components/BoothCabinet.tsx` | One booth's exterior, colored by its machine |
 | `components/Countdown.tsx` | Per-machine countdown styles, incl. seven-segment LCD |
 | `components/BoothInterior.tsx` | Full-screen booth: curtain, camera, countdown, flash, capture sequence |

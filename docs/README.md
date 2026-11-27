@@ -12,6 +12,7 @@ Working documents for The Snap Room. Keep them current as decisions change.
 | [research/04-technical.md](research/04-technical.md) | Technical notes: film-look effects, Web Audio quirks |
 | [research/05-art-direction.md](research/05-art-direction.md) | Art direction: why the site isn't "art" yet, booth art history, visual languages, the "building of rooms" proposal |
 | [research/06-real-assets.md](research/06-real-assets.md) | The real CC0 photos and textures in `public/assets/`, licensing rules, and which room each one belongs to |
+| [research/07-user-outcomes.md](research/07-user-outcomes.md) | What people want to leave with: keepsakes, instant sharing, motion, occasions, togetherness; gaps and proposals |
 
 ## Conventions
 

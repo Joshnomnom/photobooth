@@ -1,48 +1,156 @@
-import { DEFAULT_MACHINE, type Machine, machineById } from "./machines";
-import { layoutById } from "./strip";
+import type { Filter, LookParams } from "./filters";
+import { DEFAULT_MACHINE, LOOKS, type Machine, machineById, PAPERS, paperById, type StripStyle } from "./machines";
+import type { SoundProfile } from "./sound";
+import { LAYOUTS, layoutById } from "./strip";
 
 export type Mode = "film" | "digital";
-export type Timer = "3" | "5" | "10";
+export type Timer = "0" | "1" | "3" | "5" | "10";
+export type Effects = "off" | "low" | "normal" | "strong";
+export type Pace = "quick" | "normal" | "relaxed";
+/** "auto" = follow the chosen machine. Everything else overrides it (mix and match). */
+export type Auto<T extends string> = "auto" | T;
 
 export type Settings = {
   machineId: string;
-  /** Paper within the machine's set. */
-  paperId: string;
-  /** Layout within the machine's set. */
+  /** Any layout works with any machine. */
   layoutId: string;
+  /** Countdown seconds before each pose; "0" = no countdown. */
   timer: Timer;
   /** Film: one press shoots the whole strip, no retakes. Digital: one shot per press, retakes allowed. */
   mode: Mode;
   mirror: boolean;
+  // ── Mix & match ──
+  lookId: Auto<string>;
+  paperId: Auto<string>;
+  effects: Effects;
+  corners: Auto<"square" | "rounded">;
+  date: Auto<"footer" | "stamp">;
+  decorations: Auto<"none" | "sparkles">;
+  sound: Auto<SoundProfile>;
+  pace: Pace;
+  prompts: boolean;
+  flash: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   machineId: DEFAULT_MACHINE.id,
-  paperId: DEFAULT_MACHINE.papers[0].id,
   layoutId: DEFAULT_MACHINE.layouts[0],
   timer: "3",
   mode: "film",
   mirror: true,
+  lookId: "auto",
+  paperId: "auto",
+  effects: "normal",
+  corners: "auto",
+  date: "auto",
+  decorations: "auto",
+  sound: "auto",
+  pace: "normal",
+  prompts: true,
+  flash: true,
 };
 
-/** Switching machines keeps paper/layout only if the new machine offers them. */
-export function withMachine(settings: Settings, machine: Machine): Settings {
+/** Overrides that "Reset to machine defaults" clears (layout, timer, mode and mirror are kept). */
+export const MIX_DEFAULTS: Pick<
+  Settings,
+  "lookId" | "paperId" | "effects" | "corners" | "date" | "decorations" | "sound" | "pace" | "prompts" | "flash"
+> = {
+  lookId: "auto",
+  paperId: "auto",
+  effects: "normal",
+  corners: "auto",
+  date: "auto",
+  decorations: "auto",
+  sound: "auto",
+  pace: "normal",
+  prompts: true,
+  flash: true,
+};
+
+export const isMixed = (s: Settings) => (Object.keys(MIX_DEFAULTS) as (keyof typeof MIX_DEFAULTS)[]).some((k) => s[k] !== MIX_DEFAULTS[k]);
+
+/** Switching machines keeps every choice; "auto" values simply follow the new machine. */
+export const withMachine = (settings: Settings, machine: Machine): Settings => ({ ...settings, machineId: machine.id });
+
+const EFFECT_SCALE: Record<Effects, number> = { off: 0, low: 0.5, normal: 1, strong: 1.6 };
+/** Gap between poses in film mode. */
+const PACE_MS: Record<Pace, number> = { quick: 450, normal: 1100, relaxed: 2400 };
+
+function scaleLook(filter: Filter, scale: number): Filter {
+  if (scale === 1) return filter;
+  const keys: (keyof LookParams)[] = ["grain", "vignette", "halation", "leak", "flash"];
+  const base: Partial<LookParams> = { grain: 0.09, vignette: 0.32, halation: 0.3, leak: 0, flash: 0, ...filter.look };
+  const look: Partial<LookParams> = { ...filter.look };
+  for (const k of keys) look[k] = (base[k] ?? 0) * scale;
+  if (scale === 0) look.drift = 0;
+  return { ...filter, look };
+}
+
+/** Everything the rest of the app needs, with machine defaults and overrides merged. */
+export function resolve(settings: Settings) {
+  const machine = machineById(settings.machineId);
+  const look = settings.lookId === "auto" ? machine.filter : (LOOKS.find((l) => l.id === settings.lookId) ?? machine.filter);
+  const paper = (settings.paperId !== "auto" && paperById(settings.paperId)) || machine.papers[0];
+  const style: StripStyle = {
+    ...machine.strip,
+    photoRadius:
+      settings.corners === "auto" ? machine.strip.photoRadius : settings.corners === "rounded" ? Math.max(machine.strip.photoRadius, 0.05) : 0,
+    date: settings.date === "auto" ? machine.strip.date : settings.date,
+    decorations: settings.decorations === "auto" ? machine.strip.decorations : settings.decorations,
+  };
   return {
-    ...settings,
-    machineId: machine.id,
-    paperId: machine.papers.some((p) => p.id === settings.paperId) ? settings.paperId : machine.papers[0].id,
-    layoutId: machine.layouts.includes(settings.layoutId) ? settings.layoutId : machine.layouts[0],
+    machine,
+    layout: layoutById(settings.layoutId),
+    filter: scaleLook(look, EFFECT_SCALE[settings.effects]),
+    paper,
+    style,
+    sound: settings.sound === "auto" ? machine.sound : settings.sound,
+    countdown: Number(settings.timer),
+    gapMs: PACE_MS[settings.pace],
   };
 }
 
-export function resolve(settings: Settings) {
-  const machine = machineById(settings.machineId);
-  return {
-    machine,
-    filter: machine.filter,
-    paper: machine.papers.find((p) => p.id === settings.paperId) ?? machine.papers[0],
-    layout: layoutById(machine.layouts.includes(settings.layoutId) ? settings.layoutId : machine.layouts[0]),
-  };
+// ── Remembering the setup (this browser only) ──
+
+const KEY = "snaproom:settings";
+
+/** Reads saved settings, keeping only values that are still valid. */
+export function loadSettings(): Settings | null {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as Partial<Settings>;
+    const s: Settings = { ...DEFAULT_SETTINGS, ...saved };
+    const oneOf = <T,>(v: unknown, list: readonly T[], fallback: T) => (list.includes(v as T) ? (v as T) : fallback);
+    return {
+      ...s,
+      machineId: machineById(s.machineId).id,
+      layoutId: LAYOUTS.some((l) => l.id === s.layoutId) ? s.layoutId : DEFAULT_SETTINGS.layoutId,
+      timer: oneOf(s.timer, ["0", "1", "3", "5", "10"] as const, "3"),
+      mode: oneOf(s.mode, ["film", "digital"] as const, "film"),
+      lookId: s.lookId === "auto" || LOOKS.some((l) => l.id === s.lookId) ? s.lookId : "auto",
+      paperId: s.paperId === "auto" || PAPERS.some((p) => p.id === s.paperId) ? s.paperId : "auto",
+      effects: oneOf(s.effects, ["off", "low", "normal", "strong"] as const, "normal"),
+      corners: oneOf(s.corners, ["auto", "square", "rounded"] as const, "auto"),
+      date: oneOf(s.date, ["auto", "footer", "stamp"] as const, "auto"),
+      decorations: oneOf(s.decorations, ["auto", "none", "sparkles"] as const, "auto"),
+      sound: oneOf(s.sound, ["auto", "mechanical", "classic", "cute", "plastic"] as const, "auto"),
+      pace: oneOf(s.pace, ["quick", "normal", "relaxed"] as const, "normal"),
+      mirror: s.mirror !== false,
+      prompts: s.prompts !== false,
+      flash: s.flash !== false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveSettings(settings: Settings) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(settings));
+  } catch {
+    /* storage blocked: settings just won't be remembered */
+  }
 }
 
 export const POSE_PROMPTS = [

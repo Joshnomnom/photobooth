@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (Phase 5 built)_
+_Last updated: 2026-11-27 (Phase 6 built; Phase 7 proposed)_
 
 ## Vision
 
@@ -196,6 +196,29 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 
 **Verified:** typecheck, lint; headless Chrome runs through every room (street → booth → darkroom → lights on → table → gallery), all four machines, decorating, pin/print/GIF, gallery open/print/take down, mobile, camera denied; no console errors.
 
+### Phase 6 · More options, mix & match, live preview ✅
+
+**Goal: let people combine anything, and see the result before shooting.**
+
+- [x] 11 layouts for every machine: vertical strips of 2/3/4/6, wide strips of 3/4, grids of 4, 6, 6 wide, 8, 9 (each with a mini grid icon)
+- [x] Countdown: Off, 1, 3, 5, 10 s (Off: no countdown; the next pose's prompt shows during the gap)
+- [x] **Mix & match** (each defaults to "Machine"): film look (any machine's + Natural, Pop, Soft, Cool, Rose, Noir), film effects strength (off/low/normal/strong), paper (all 16), photo corners, date (printed / orange stamp), decorations, sound voice, gap between poses (quick/normal/relaxed), pose prompts on/off, flash on/off, mirror; "custom" badge and "Reset to machine defaults"
+- [x] **Live preview** at the top of the setup panel: the real strip renderer with the current setup, filled with sample photos from a real vintage strip developed in the chosen look
+- [x] Studio table: sticker sheets from every machine plus "All sheets"; 13 pen colors
+- [x] Setup remembered in this browser (validated on load)
+
+**Verified:** typecheck, lint; headless Chrome: a fully mixed setup (Grid · 9, no countdown, Noir + strong effects, Midnight paper, rounded corners, orange stamp, sparkles, cute sound, quick pace, prompts/flash off) persists across reload, shoots 9 photos in ~6 s, and the strip carries every choice; reset clears the mix; no horizontal scroll on mobile.
+
+### Phase 7 · Outcomes: what people leave with ⏳ (proposed)
+
+Research: [07-user-outcomes](research/07-user-outcomes.md). The style is strong; the gaps are in sharing, motion and occasions.
+
+- [ ] **Ready-to-post formats** with previews: Instagram Story 9:16 (safe zones), feed post 4:5, phone wallpaper; strip on a room-styled background
+- [ ] **Live strip:** short clip per pose → animated strip (WebM/MP4) and a small boomerang GIF
+- [ ] **Occasions:** one-tap themes (Birthday, Date night, Besties, Graduation, Wedding, Holiday): caption, sticker pack, suggested paper; still mixable
+- [ ] **Together modes:** prompt sets for solo / couple / friends
+- [ ] Not doing (privacy): QR codes, cloud galleries, remote "booth with friends"
+
 ### Explicitly out of scope
 
 - Face reshaping or beautify filters (off-brand; body-image concerns)
@@ -237,3 +260,5 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 | 2026-11-27 | Art direction: "a building of rooms" (street → booth → darkroom → studio table → gallery) | One big idea that maps onto the existing stages, uses the name literally, and ties into booth art history |
 | 2026-11-27 | Gallery becomes its own room; the corkboard wall is retired | The gallery is the end of the photo's journey in the rooms concept, and wall labels need space |
 | 2026-11-27 | "Lights on" is a button, not automatic | The reveal of real color is the payoff; giving the visitor the switch makes it theirs |
+| 2026-11-27 | Machines become presets; every setting can be overridden ("Mix & match") | People want to combine freely; "Machine" defaults keep the one-tap experience |
+| 2026-11-27 | Live setup preview uses real vintage faces developed in the chosen look | Shows the look and the frame honestly before shooting, without needing the camera |

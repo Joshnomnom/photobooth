@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { MACHINES } from "@/lib/machines";
-import { type Settings, type Timer, resolve, withMachine } from "@/lib/settings";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LOOKS, MACHINES, PAPERS } from "@/lib/machines";
+import { type Effects, isMixed, MIX_DEFAULTS, type Pace, resolve, type Settings, type Timer, withMachine } from "@/lib/settings";
 import { preloadSounds } from "@/lib/sound";
-import { layoutById, shotCount } from "@/lib/strip";
+import { LAYOUTS, shotCount } from "@/lib/strip";
 import { BoothCabinet } from "./BoothCabinet";
 import { useWallCount } from "./Gallery";
 import { MuteButton } from "./MuteButton";
 import { OptionGroup } from "./OptionGroup";
+import { SetupPreview } from "./SetupPreview";
 
 type Props = {
   settings: Settings;
@@ -20,7 +21,8 @@ type Props = {
 /** Outside: a row of booths to walk along (swipe on mobile), plus setup for the chosen one. */
 export function Outside({ settings, onChange, onStart, onGallery }: Props) {
   const pinned = useWallCount();
-  const { machine, layout, paper } = resolve(settings);
+  const { machine, layout, paper, style, filter } = useMemo(() => resolve(settings), [settings]);
+  const [mixOpen, setMixOpen] = useState(false);
   const index = MACHINES.findIndex((m) => m.id === machine.id);
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => onChange({ ...settings, [key]: value });
 
@@ -116,7 +118,7 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
                 <BoothCabinet
                   machine={m}
                   active={i === index}
-                  shots={shotCount(i === index ? layout : layoutById(m.layouts[0]))}
+                  shots={shotCount(layout)}
                   onSelect={() => select(i)}
                   onStart={onStart}
                 />
@@ -170,6 +172,7 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
         </div>
 
         <div className="space-y-5">
+          <SetupPreview layout={layout} paper={paper} style={style} filter={filter} />
           <OptionGroup
             label="Mode"
             value={settings.mode}
@@ -188,18 +191,13 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
             label="Strip"
             value={layout.id}
             onChange={(v) => set("layoutId", v)}
-            options={machine.layouts.map((id) => ({ id, label: layoutById(id).name }))}
-          />
-          <OptionGroup
-            label="Paper"
-            value={paper.id}
-            onChange={(v) => set("paperId", v)}
-            options={machine.papers.map((p) => ({
-              id: p.id,
+            options={LAYOUTS.map((l) => ({
+              id: l.id,
+              title: `${l.name}: ${shotCount(l)} photos`,
               label: (
                 <>
-                  <span className="size-3.5 rounded-full border border-black/15" style={{ background: p.paper }} aria-hidden />
-                  {p.name}
+                  <LayoutIcon cols={l.cols} rows={l.rows} />
+                  {l.name}
                 </>
               ),
             }))}
@@ -208,19 +206,155 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
             label="Countdown"
             value={settings.timer}
             onChange={(v: Timer) => set("timer", v)}
-            options={(["3", "5", "10"] as const).map((t) => ({ id: t, label: `${t}s` }))}
+            options={(["0", "1", "3", "5", "10"] as const).map((t) => ({ id: t, label: t === "0" ? "Off" : `${t}s` }))}
           />
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={settings.mirror}
-              onChange={(e) => set("mirror", e.target.checked)}
-              className="size-4 accent-accent"
-            />
-            Mirror the camera (like a mirror, not a photo)
-          </label>
+
+          {/* Mix & match: override anything the machine sets */}
+          <details open={mixOpen} onToggle={(e) => setMixOpen(e.currentTarget.open)} className="group rounded-xl border border-line">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold">
+              <span className="flex items-center gap-2">
+                Mix &amp; match
+                {isMixed(settings) && (
+                  <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">custom</span>
+                )}
+              </span>
+              <span className="text-muted transition group-open:rotate-180" aria-hidden>
+                ▾
+              </span>
+            </summary>
+            <div className="space-y-5 border-t border-line px-4 pb-4 pt-4">
+              <p className="-mt-1 text-xs text-muted">
+                Borrow anything from any machine. &ldquo;Machine&rdquo; follows the {machine.year} {machine.name}.
+              </p>
+              <OptionGroup
+                label="Film look"
+                value={settings.lookId}
+                onChange={(v) => set("lookId", v)}
+                options={[{ id: "auto", label: "Machine" }, ...LOOKS.map((l) => ({ id: l.id, label: l.name }))]}
+              />
+              <OptionGroup
+                label="Film effects"
+                value={settings.effects}
+                onChange={(v: Effects) => set("effects", v)}
+                options={[
+                  { id: "off", label: "Off", title: "Clean digital: no grain, glow or vignette" },
+                  { id: "low", label: "Low" },
+                  { id: "normal", label: "Normal" },
+                  { id: "strong", label: "Strong", title: "Heavier grain, glow, vignette and light leaks" },
+                ]}
+              />
+              <OptionGroup
+                label="Paper"
+                value={settings.paperId}
+                onChange={(v) => set("paperId", v)}
+                options={[
+                  { id: "auto", label: `Machine (${machine.papers[0].name})` },
+                  ...PAPERS.map((pp) => ({
+                    id: pp.id,
+                    label: (
+                      <>
+                        <span className="size-3.5 rounded-full border border-black/15" style={{ background: pp.paper }} aria-hidden />
+                        {pp.name}
+                      </>
+                    ),
+                  })),
+                ]}
+              />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <OptionGroup
+                  label="Photo corners"
+                  value={settings.corners}
+                  onChange={(v) => set("corners", v)}
+                  options={[
+                    { id: "auto", label: "Machine" },
+                    { id: "square", label: "Square" },
+                    { id: "rounded", label: "Rounded" },
+                  ]}
+                />
+                <OptionGroup
+                  label="Date"
+                  value={settings.date}
+                  onChange={(v) => set("date", v)}
+                  options={[
+                    { id: "auto", label: "Machine" },
+                    { id: "footer", label: "Printed", title: "Printed under the caption" },
+                    { id: "stamp", label: "Orange stamp", title: "Burned into each photo, like a disposable" },
+                  ]}
+                />
+                <OptionGroup
+                  label="Decorations"
+                  value={settings.decorations}
+                  onChange={(v) => set("decorations", v)}
+                  options={[
+                    { id: "auto", label: "Machine" },
+                    { id: "none", label: "None" },
+                    { id: "sparkles", label: "Sparkles" },
+                  ]}
+                />
+                <OptionGroup
+                  label="Between poses"
+                  value={settings.pace}
+                  onChange={(v: Pace) => set("pace", v)}
+                  options={[
+                    { id: "quick", label: "Quick" },
+                    { id: "normal", label: "Normal" },
+                    { id: "relaxed", label: "Relaxed" },
+                  ]}
+                />
+              </div>
+              <OptionGroup
+                label="Sound"
+                value={settings.sound}
+                onChange={(v) => set("sound", v)}
+                options={[
+                  { id: "auto", label: "Machine" },
+                  { id: "mechanical", label: "Mechanical" },
+                  { id: "classic", label: "Classic" },
+                  { id: "cute", label: "Cute" },
+                  { id: "plastic", label: "Plastic" },
+                ]}
+              />
+              <div className="flex flex-col gap-2 text-sm">
+                {(
+                  [
+                    ["prompts", "Pose prompts (\u201CSilly face!\u201D)"],
+                    ["flash", "Screen flash on each shot"],
+                    ["mirror", "Mirror the camera (like a mirror, not a photo)"],
+                  ] as const
+                ).map(([key, text]) => (
+                  <label key={key} className="inline-flex items-center gap-2">
+                    <input type="checkbox" checked={settings[key]} onChange={(e) => set(key, e.target.checked)} className="size-4 accent-accent" />
+                    {text}
+                  </label>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange({ ...settings, ...MIX_DEFAULTS })}
+                disabled={!isMixed(settings)}
+                className="h-9 rounded-full border border-line px-4 text-xs font-semibold text-muted transition hover:text-ink disabled:opacity-40"
+              >
+                Reset to machine defaults
+              </button>
+            </div>
+          </details>
         </div>
       </section>
     </div>
+  );
+}
+
+/** A tiny diagram of a layout's grid. */
+function LayoutIcon({ cols, rows }: { cols: number; rows: number }) {
+  return (
+    <span
+      aria-hidden
+      className="grid shrink-0 gap-[1.5px] rounded-[2px] bg-current/15 p-[2px]"
+      style={{ gridTemplateColumns: `repeat(${cols}, 5px)`, gridAutoRows: "4px" }}
+    >
+      {Array.from({ length: cols * rows }).map((_, i) => (
+        <span key={i} className="rounded-[1px] bg-current opacity-70" />
+      ))}
+    </span>
   );
 }

@@ -265,3 +265,39 @@ export const MACHINES: readonly Machine[] = [
 export const DEFAULT_MACHINE = MACHINES[1];
 
 export const machineById = (id: string) => MACHINES.find((m) => m.id === id) ?? DEFAULT_MACHINE;
+
+/** Extra papers beyond the machines' own sets. */
+const EXTRA_PAPERS: readonly Paper[] = [
+  { id: "kraft", name: "Kraft", paper: "#c9a57b", ink: "#2b2014", slot: "#b8936a" },
+  { id: "tomato", name: "Tomato", paper: "#e5482f", ink: "#fff6ef", slot: "#c93b25" },
+  { id: "sky", name: "Sky", paper: "#bcd9ee", ink: "#14283a", slot: "#a7c8e0" },
+  { id: "sage", name: "Sage", paper: "#c9dbc6", ink: "#1b2b1d", slot: "#b4caae" },
+  { id: "midnight", name: "Midnight", paper: "#18203a", ink: "#ece6d6", slot: "#232c4a" },
+  { id: "silver", name: "Silver", paper: "#d4d6d8", ink: "#1c1d1f", slot: "#c2c4c7" },
+];
+
+/** Every paper, from every machine plus extras, for mixing and matching. */
+export const PAPERS: readonly Paper[] = [
+  ...MACHINES.flatMap((m) => m.papers).filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i),
+  ...EXTRA_PAPERS,
+];
+
+export const paperById = (id: string) => PAPERS.find((p) => p.id === id);
+
+/** Extra film looks beyond the machines' own. */
+const EXTRA_LOOKS: readonly Filter[] = [
+  { id: "natural", name: "Natural", ops: [], look: { grain: 0.06, halation: 0.2 } },
+  { id: "pop", name: "Pop", ops: [["contrast", 1.15], ["saturate", 1.5]] },
+  { id: "soft", name: "Soft", ops: [["contrast", 0.85], ["brightness", 1.1], ["saturate", 0.8]], look: { halation: 0.4 } },
+  { id: "cool", name: "Cool", ops: [["hue-rotate", -12], ["saturate", 0.9], ["brightness", 1.05]] },
+  { id: "rose", name: "Rose", ops: [["sepia", 0.15], ["hue-rotate", -20], ["saturate", 1.2]] },
+  { id: "noir", name: "Noir", ops: [["grayscale", 1], ["contrast", 1.6], ["brightness", 0.9]], look: { grain: 0.16, vignette: 0.5 } },
+];
+
+/** Every look: each machine's own (named after the machine) plus extras. */
+export const LOOKS: readonly Filter[] = [
+  ...MACHINES.map((m) => ({ ...m.filter, id: m.id, name: `${m.year} ${m.name}` })),
+  ...EXTRA_LOOKS,
+];
+
+export const lookById = (id: string) => LOOKS.find((l) => l.id === id);

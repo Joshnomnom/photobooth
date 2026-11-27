@@ -7,14 +7,22 @@ import { drawSevenSeg, stampText, textWidth } from "./sevenSeg";
 
 export type Layout = { id: string; name: string; cols: number; rows: number };
 
+/** Every layout works with every machine. Vertical strips, wide strips, and grids. */
 export const LAYOUTS: readonly Layout[] = [
+  { id: "strip-2", name: "Strip · 2", cols: 1, rows: 2 },
   { id: "strip-3", name: "Strip · 3", cols: 1, rows: 3 },
   { id: "strip-4", name: "Strip · 4", cols: 1, rows: 4 },
+  { id: "strip-6", name: "Strip · 6", cols: 1, rows: 6 },
+  { id: "wide-3", name: "Wide · 3", cols: 3, rows: 1 },
+  { id: "wide-4", name: "Wide · 4", cols: 4, rows: 1 },
   { id: "grid-4", name: "Grid · 4", cols: 2, rows: 2 },
   { id: "grid-6", name: "Grid · 6", cols: 2, rows: 3 },
+  { id: "grid-6w", name: "Grid · 6 wide", cols: 3, rows: 2 },
+  { id: "grid-8", name: "Grid · 8", cols: 2, rows: 4 },
+  { id: "grid-9", name: "Grid · 9", cols: 3, rows: 3 },
 ];
 
-export const layoutById = (id: string) => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
+export const layoutById = (id: string) => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[2];
 export const shotCount = (layout: Layout) => layout.cols * layout.rows;
 
 /** Color of a photo that hasn't developed yet: murky grey-green, like fresh print paper. */
