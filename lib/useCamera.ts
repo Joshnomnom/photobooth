@@ -3,51 +3,58 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CameraStatus = "idle" | "starting" | "live" | "error";
+export type CameraErrorKind = "insecure" | "unsupported" | "denied" | "notfound" | "busy" | "unknown";
 
-function describeError(err: unknown): string {
-  if (typeof window !== "undefined" && !window.isSecureContext) {
-    return "Camera access needs a secure connection (HTTPS or localhost).";
-  }
+function classify(err: unknown): CameraErrorKind {
+  if (!window.isSecureContext) return "insecure";
   const name = err instanceof DOMException ? err.name : "";
   switch (name) {
     case "NotAllowedError":
     case "SecurityError":
-      return "Camera permission was denied. Allow it in your browser's site settings, then try again.";
+      return "denied";
     case "NotFoundError":
     case "OverconstrainedError":
-      return "No camera was found on this device.";
+      return "notfound";
     case "NotReadableError":
     case "AbortError":
-      return "Your camera is busy. Close other apps or tabs that are using it, then try again.";
+      return "busy";
     default:
-      return "Couldn't start the camera. Please try again.";
+      return "unknown";
   }
 }
 
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Each start() gets a token; stale requests (e.g. after unmount) release their stream.
+  const requestRef = useRef(0);
   const [status, setStatus] = useState<CameraStatus>("idle");
-  const [error, setError] = useState("");
+  const [errorKind, setErrorKind] = useState<CameraErrorKind | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [deviceId, setDeviceId] = useState<string>("");
+  const [deviceId, setDeviceId] = useState("");
 
-  const stop = useCallback(() => {
+  const release = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+  };
+
+  const stop = useCallback(() => {
+    requestRef.current++;
+    release();
     if (videoRef.current) videoRef.current.srcObject = null;
     setStatus("idle");
   }, []);
 
   const start = useCallback(async (id?: string) => {
+    const token = ++requestRef.current;
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError(describeError(new DOMException("", "NotSupportedError")));
+      setErrorKind(window.isSecureContext ? "unsupported" : "insecure");
       setStatus("error");
       return;
     }
     setStatus("starting");
-    setError("");
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    setErrorKind(null);
+    release();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
@@ -57,26 +64,35 @@ export function useCamera() {
           height: { ideal: 1440 },
         },
       });
+      if (token !== requestRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       streamRef.current = stream;
       const video = videoRef.current;
       if (video) {
         video.srcObject = stream;
         await video.play().catch(() => {});
       }
-      const active = stream.getVideoTracks()[0]?.getSettings().deviceId ?? "";
-      setDeviceId(active);
+      setDeviceId(stream.getVideoTracks()[0]?.getSettings().deviceId ?? "");
       // Device labels are only exposed after permission is granted.
       const all = await navigator.mediaDevices.enumerateDevices();
       setDevices(all.filter((d) => d.kind === "videoinput"));
       setStatus("live");
     } catch (err) {
-      streamRef.current = null;
-      setError(describeError(err));
+      if (token !== requestRef.current) return;
+      setErrorKind(classify(err));
       setStatus("error");
     }
   }, []);
 
-  useEffect(() => () => streamRef.current?.getTracks().forEach((t) => t.stop()), []);
+  useEffect(
+    () => () => {
+      requestRef.current++;
+      release();
+    },
+    [],
+  );
 
-  return { videoRef, status, error, devices, deviceId, start, stop };
+  return { videoRef, status, errorKind, devices, deviceId, start, stop };
 }

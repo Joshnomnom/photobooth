@@ -11,22 +11,35 @@
 type OpName = "brightness" | "contrast" | "saturate" | "sepia" | "grayscale" | "hue-rotate";
 type Op = readonly [OpName, number];
 
+/** Film character applied on top of the color ops (see lib/look.ts). All values are 0–1-ish strengths. */
+export type LookParams = {
+  /** Brightness-following monochrome grain. */
+  grain: number;
+  /** Edge darkening. */
+  vignette: number;
+  /** Warm glow bleeding from highlights. */
+  halation: number;
+  /** Random per-shot exposure / white-balance drift. */
+  drift: number;
+};
+
 export type Filter = {
   id: string;
   name: string;
   ops: readonly Op[];
+  look?: Partial<LookParams>;
 };
 
 export const FILTERS: readonly Filter[] = [
-  { id: "none", name: "Natural", ops: [] },
+  { id: "none", name: "Natural", ops: [], look: { grain: 0.06, halation: 0.2 } },
   { id: "warm", name: "Warm", ops: [["sepia", 0.22], ["saturate", 1.2], ["brightness", 1.04]] },
   { id: "pop", name: "Pop", ops: [["contrast", 1.15], ["saturate", 1.5]] },
   { id: "soft", name: "Soft", ops: [["contrast", 0.85], ["brightness", 1.1], ["saturate", 0.8]] },
   { id: "film", name: "Film", ops: [["sepia", 0.35], ["contrast", 0.92], ["saturate", 0.85]] },
   { id: "cool", name: "Cool", ops: [["hue-rotate", -12], ["saturate", 0.9], ["brightness", 1.05]] },
   { id: "rose", name: "Rose", ops: [["sepia", 0.15], ["hue-rotate", -20], ["saturate", 1.2]] },
-  { id: "mono", name: "Mono", ops: [["grayscale", 1], ["contrast", 1.2], ["brightness", 1.05]] },
-  { id: "noir", name: "Noir", ops: [["grayscale", 1], ["contrast", 1.6], ["brightness", 0.9]] },
+  { id: "mono", name: "Mono", ops: [["grayscale", 1], ["contrast", 1.2], ["brightness", 1.05]], look: { grain: 0.13 } },
+  { id: "noir", name: "Noir", ops: [["grayscale", 1], ["contrast", 1.6], ["brightness", 0.9]], look: { grain: 0.16, vignette: 0.5 } },
 ];
 
 export function filterToCss(filter: Filter): string {
@@ -37,7 +50,7 @@ export function filterToCss(filter: Filter): string {
 }
 
 /** 3x4 affine color matrix, row-major: [rr, rg, rb, ro, gr, gg, gb, go, br, bg, bb, bo]. */
-type Matrix = number[];
+export type Matrix = number[];
 
 // Matrices follow the Filter Effects spec so results match the CSS preview.
 function opToMatrix([name, v]: Op): Matrix {
@@ -83,29 +96,8 @@ function opToMatrix([name, v]: Op): Matrix {
   }
 }
 
-const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
-
-/** Applies a filter to canvas pixels in place. Ops run in order and clamp between steps, as CSS does. */
-export function applyFilter(ctx: CanvasRenderingContext2D, width: number, height: number, filter: Filter) {
-  if (filter.ops.length === 0) return;
-  const matrices = filter.ops.map(opToMatrix);
-  const image = ctx.getImageData(0, 0, width, height);
-  const d = image.data;
-  for (let i = 0; i < d.length; i += 4) {
-    let r = d[i] / 255;
-    let g = d[i + 1] / 255;
-    let b = d[i + 2] / 255;
-    for (const m of matrices) {
-      const nr = clamp01(m[0] * r + m[1] * g + m[2] * b + m[3]);
-      const ng = clamp01(m[4] * r + m[5] * g + m[6] * b + m[7]);
-      const nb = clamp01(m[8] * r + m[9] * g + m[10] * b + m[11]);
-      r = nr;
-      g = ng;
-      b = nb;
-    }
-    d[i] = r * 255;
-    d[i + 1] = g * 255;
-    d[i + 2] = b * 255;
-  }
-  ctx.putImageData(image, 0, 0);
+/** Compiles a filter's ops into color matrices, in application order. */
+export function compileOps(ops: readonly Op[]): Matrix[] {
+  return ops.map(opToMatrix);
 }
+

@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27_
+_Last updated: 2026-11-27 (Phase 1 built)_
 
 ## Vision
 
@@ -47,48 +47,58 @@ Clean rebuild of the app (commit `0d1fc90`, branch `rework-booth`).
 - [x] Keyboard shortcuts, Web Share, responsive layout
 - [x] Project docs and research
 
-### Phase 1 · The Machine ⏳
+### Phase 1 · The Machine ✅ (verify on real devices)
 
 **Goal: the session feels like a real booth.** This is where we stand out.
 
-**1.1 Session flow (state machine)**
-- [ ] Replace the "page with controls" with clear stages: `outside → stepping-in → shooting → printing → collected`
-- [ ] One `useBoothSession` reducer owns the stage; components just render the stage they're in
-- [ ] Fixed shot cadence during a session (no fiddling between shots)
-- [ ] **Film mode** (default): N shots, no retakes. **Digital mode**: retakes allowed (today's behavior)
+**1.1 Session flow**
+- [x] Clear stages instead of a "page with controls": `outside → booth → printing → collected` (`components/Booth.tsx`)
+- [x] Stage lives in `Booth`; each stage is its own component (`Outside`, `BoothInterior`, `PrintSlot`, `Collected`). A reducer wasn't needed at this size
+- [x] Fixed shot cadence: first countdown uses the chosen timer, then 3s between poses
+- [x] **Film mode** (default): one press shoots the whole strip, no retakes, prints automatically. **Digital mode**: one shot per press, retakes, then "Print strip"
 
 **1.2 Outside the booth / step in**
-- [ ] Booth "exterior" landing: machine front, marquee name, big **Start** button
-- [ ] Start = unlock audio + ask for the camera in one motivated gesture ([research](research/03-ux-ui.md#camera-permission-flow))
-- [ ] Curtain-open transition into the camera view (a fade under reduced motion)
-- [ ] Redesigned denied state: "Booth closed" card with steps for the detected browser and OS
+- [x] Booth exterior: marquee with bulbs, velvet curtain, "Step inside" sign, coin slot, big **Start** button (`components/Outside.tsx`)
+- [x] Start = unlock audio + coin sound + camera request in one gesture
+- [x] Curtain opens when the camera goes live (a fade under reduced motion)
+- [x] "Booth closed" card with steps for Chrome/Edge, Firefox, Safari, iOS and Android, plus a macOS system-settings hint (`components/CameraBlocked.tsx`)
 
 **1.3 Shooting**
-- [ ] Full-screen camera view on mobile; shutter bottom-center with space around it
-- [ ] Countdown styled like the machine (e.g., lit numbers), announced via `aria-live`
-- [ ] Whole-screen flash per shot (single flash, ≥1s apart, so WCAG 2.3.1 is safe)
-- [ ] "Pose 2 of 4" style prompts between shots
+- [x] Full-screen booth interior on every screen size; shutter bottom-center, Stop replaces it while shooting
+- [x] Glowing countdown numerals, announced via `aria-live`
+- [x] Whole-screen flash per shot (single flash, ≥1s apart)
+- [x] "Pose 2 of 4 · Silly face!" prompts (shuffled per session)
 
-**1.4 Print and develop** ⭐ signature moment
-- [ ] Strip slides out of a print slot after the last shot
-- [ ] Develop animation: blank → faint sepia → full color, easing in (about 8s)
-- [ ] Tap or press any key to skip; the final render and PNG are prepared during the animation (honest wait)
-- [ ] Reduced motion: short crossfade, no sliding
+**1.4 Print and develop** ⭐
+- [x] Strip pushed out of the print slot in motor-like steps (3s)
+- [x] Develops from blank grey-green paper → sepia → full color, easing in (about 8s total)
+- [x] Tap or press any key to skip; then "Take your strip →" to collect it
+- [x] Reduced motion: no sliding, a short develop fade
 
-**1.5 Film look v1** ([technical notes](research/04-technical.md#film-look-pipeline))
-- [ ] Grain that follows brightness (monochrome, strongest in shadows and midtones)
-- [ ] Vignette
-- [ ] Halation (bright areas → blur → warm tint, added back)
-- [ ] Slight per-shot exposure/white-balance drift (seeded)
-- [ ] Paper texture + soft photo edges in strip composition
-- [ ] Live preview approximates the look (CSS/SVG overlays); export is exact
+**1.5 Film look v1** (`lib/look.ts`)
+- [x] Grain that follows brightness (monochrome, strongest in shadows and midtones)
+- [x] Vignette (varies slightly per shot)
+- [x] Halation (bright areas → two-scale blur → warm tint, screened back)
+- [x] Seeded per-shot exposure/white-balance drift
+- [x] Paper speck texture + soft photo edges in strip composition (`lib/strip.ts`)
+- [x] Live preview approximates the look (CSS vignette + animated SVG grain); capture applies the real thing
 
-**1.6 Sound**
-- [ ] Synthesized Web Audio sound kit: coin/start, tick, shutter clunk, print whirr, strip drop ([sound map](research/03-ux-ui.md#feedback-sound-and-haptics))
-- [ ] Visible mute toggle, remembered per device; never the only signal
-- [ ] `navigator.vibrate` on shutter where supported
+**1.6 Sound** (`lib/sound.ts`)
+- [x] Synthesized kit: coin, tick, curtain, shutter (two-stage clunk + flash pop), print motor whirr, strip drop
+- [x] Mute toggle on the setup panel and inside the booth, remembered per device
+- [x] `navigator.vibrate` on shutter (Android)
 
-**Done when:** a first-time visitor can go start → strip in hand without reading any instructions, and the develop moment gets a reaction.
+**Verified:** typecheck, lint, and headless Chrome end-to-end runs with a fake camera (film flow start → collected, digital retake, camera-denied flow, mobile viewport). No console errors.
+
+**Still to check by hand:**
+- [ ] Real phones: iOS Safari (audio unlock, silent switch, `playsinline`), Android Chrome
+- [ ] Listen to the synthesized sounds and tune them
+- [ ] Tune look strength (grain/halation) on real faces in different light
+- [ ] Capture timing on low-end phones (the pixel loop runs on the main thread; move it to a worker or WebGL if it stutters)
+
+**Follow-ups found while building:**
+- [ ] On portrait phones the 4:3 camera window leaves empty space; consider a taller window, or a portrait 3:4 capture for strip layouts
+- [ ] Remember the last setup (localStorage)
 
 ### Phase 2 · Machines (eras) 💤
 
@@ -135,10 +145,10 @@ Clean rebuild of the app (commit `0d1fc90`, branch `rework-booth`).
 
 | Question | Options | Leaning |
 | --- | --- | --- |
-| Default mode | Film (no retakes) vs Digital | Film by default, with Digital one tap away |
-| Sound default | On vs off | On after the Start press (that's a user gesture), with a visible mute |
-| Keep the name "The Snap Room"? | Keep / rename | Keep for now |
-| Sounds: synthesized or samples? | Synth vs recorded | Synth first; samples only if synth feels fake |
+| ~~Default mode~~ | Decided: Film | See decision log |
+| ~~Sound default~~ | Decided: on after Start, with mute | See decision log |
+| ~~Keep the name?~~ | Decided: keep | See decision log |
+| ~~Sounds: synth or samples?~~ | Decided: synth (revisit after listening on devices) | See decision log |
 | Live preview fidelity | CSS approximation vs WebGL | CSS in Phase 1; WebGL in Phase 2 if needed |
 
 ## Decision log
@@ -148,3 +158,8 @@ Clean rebuild of the app (commit `0d1fc90`, branch `rework-booth`).
 | 2026-11-27 | Rebuilt from scratch on Next.js + Tailwind, all client-side | Old code was one minified file with leftover scaffold code and bugs |
 | 2026-11-27 | Own pixel pipeline instead of `ctx.filter` | Safari doesn't support `ctx.filter` |
 | 2026-11-27 | Focus on ritual + craft as the point of difference | Research: baseline features are already common; the experience is not |
+| 2026-11-27 | Film mode is the default; Digital is one tap away | No retakes makes the strip feel precious, like a real booth |
+| 2026-11-27 | Sound on after the Start press, visible mute, remembered | Start is a user gesture, so audio can unlock; mute respects shared spaces |
+| 2026-11-27 | Keep the name "The Snap Room" | No reason to change yet |
+| 2026-11-27 | Synthesized Web Audio sounds, no sample files | Tiny, no licensing, easy to vary per machine in Phase 2 |
+| 2026-11-27 | Camera turns off when printing starts | Privacy: the camera light goes off as soon as it isn't needed |

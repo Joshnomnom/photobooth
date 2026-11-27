@@ -1,4 +1,5 @@
-import { applyFilter, type Filter } from "./filters";
+import { PHOTO_H, PHOTO_W } from "./look";
+import { rng } from "./random";
 
 export type Layout = { id: string; name: string; cols: number; rows: number };
 
@@ -31,37 +32,8 @@ export const FRAMES: readonly Frame[] = [
   { id: "sage", name: "Sage", paper: "#c9dbc6", ink: "#1b2b1d", slot: "#b4caae" },
 ];
 
-/** Every photo is captured at this size (4:3), so the preview and the export always match. */
-export const PHOTO_W = 1200;
-export const PHOTO_H = 900;
-
-/** Crops the video to 4:3 from the center, mirrors it if needed, applies the filter, and returns the result. */
-export function capturePhoto(video: HTMLVideoElement, filter: Filter, mirror: boolean): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = PHOTO_W;
-  canvas.height = PHOTO_H;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) throw new Error("Canvas is not supported in this browser.");
-
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
-  const target = PHOTO_W / PHOTO_H;
-  let sw = vw;
-  let sh = vh;
-  if (vw / vh > target) sw = vh * target;
-  else sh = vw / target;
-  const sx = (vw - sw) / 2;
-  const sy = (vh - sh) / 2;
-
-  if (mirror) {
-    ctx.translate(PHOTO_W, 0);
-    ctx.scale(-1, 1);
-  }
-  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, PHOTO_W, PHOTO_H);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  applyFilter(ctx, PHOTO_W, PHOTO_H, filter);
-  return canvas;
-}
+/** Color of a photo that hasn't developed yet: murky grey-green, like fresh print paper. */
+const UNDEVELOPED = "#a9a596";
 
 export type StripOptions = {
   layout: Layout;
@@ -71,14 +43,41 @@ export type StripOptions = {
   showDate: boolean;
   /** Font families as resolved by next/font. */
   fonts: { display: string; body: string };
+  /** Draw photo slots as blank, undeveloped paper (used for the print animation). */
+  undeveloped?: boolean;
 };
 
+let paperTile: HTMLCanvasElement | null = null;
+
+/** A small tile of light and dark specks that gives the strip a paper feel on any color. */
+function getPaperTile() {
+  if (paperTile) return paperTile;
+  const size = 160;
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext("2d");
+  if (!ctx) return c;
+  const img = ctx.createImageData(size, size);
+  const rand = rng(1925);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = rand() > 0.5 ? 255 : 0;
+    img.data[i] = v;
+    img.data[i + 1] = v;
+    img.data[i + 2] = v;
+    img.data[i + 3] = rand() * 22;
+  }
+  ctx.putImageData(img, 0, 0);
+  paperTile = c;
+  return c;
+}
+
 /**
- * Draws the finished strip. The on-screen preview and the downloaded file both
- * come from this function, so what you see is exactly what you get.
+ * Draws the finished strip. The on-screen preview, the print animation and
+ * the downloaded file all come from this function, so they always match.
  */
 export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
-  const { layout, frame, shots, caption, showDate, fonts } = opts;
+  const { layout, frame, shots, caption, showDate, fonts, undeveloped } = opts;
   const cellW = layout.cols === 1 ? 900 : 720;
   const cellH = (cellW * PHOTO_H) / PHOTO_W;
   const pad = Math.round(cellW * 0.07);
@@ -94,6 +93,11 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
   if (!ctx) return;
   ctx.fillStyle = frame.paper;
   ctx.fillRect(0, 0, width, height);
+  const pattern = ctx.createPattern(getPaperTile(), "repeat");
+  if (pattern) {
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   for (let i = 0; i < shotCount(layout); i++) {
     const col = i % layout.cols;
@@ -101,7 +105,10 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
     const x = pad + col * (cellW + gap);
     const y = pad + row * (cellH + gap);
     const shot = shots[i];
-    if (shot) {
+    if (undeveloped) {
+      ctx.fillStyle = UNDEVELOPED;
+      ctx.fillRect(x, y, cellW, cellH);
+    } else if (shot) {
       ctx.drawImage(shot, x, y, cellW, cellH);
     } else {
       ctx.fillStyle = frame.slot;
@@ -114,6 +121,10 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
       ctx.fillText(String(i + 1), x + cellW / 2, y + cellH / 2);
       ctx.globalAlpha = 1;
     }
+    // A soft edge where the photo meets the paper.
+    ctx.strokeStyle = "rgba(0,0,0,0.14)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, cellW - 2, cellH - 2);
   }
 
   const footerTop = height - footer;
@@ -121,8 +132,7 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const title = caption.trim() || "The Snap Room";
-  const titleSize = Math.round(footer * 0.3);
-  ctx.font = `italic 400 ${titleSize}px ${fonts.display}`;
+  ctx.font = `italic 400 ${Math.round(footer * 0.3)}px ${fonts.display}`;
   const maxTextW = width - pad * 2;
   ctx.fillText(title, width / 2, footerTop + footer * (showDate ? 0.4 : 0.5), maxTextW);
 
@@ -132,9 +142,10 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
       .toUpperCase();
     ctx.globalAlpha = 0.6;
     ctx.font = `600 ${Math.round(footer * 0.1)}px ${fonts.body}`;
-    if ("letterSpacing" in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = "4px";
+    const spaced = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+    if ("letterSpacing" in spaced) spaced.letterSpacing = "4px";
     ctx.fillText(date, width / 2, footerTop + footer * 0.7, maxTextW);
-    if ("letterSpacing" in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = "0px";
+    if ("letterSpacing" in spaced) spaced.letterSpacing = "0px";
     ctx.globalAlpha = 1;
   }
 }

@@ -20,13 +20,24 @@ npm run build
 
 ## Structure
 
+The session moves through four stages: **outside → booth → printing → collected**.
+
 | Path | What it does |
 | --- | --- |
-| `components/Booth.tsx` | The booth UI: camera, capture loop, settings, export |
-| `components/StripPreview.tsx` | Live strip preview |
-| `lib/strip.ts` | Layouts, frames, photo capture and strip rendering (shared by the preview and the download) |
-| `lib/filters.ts` | Filters, defined once and used for both the CSS preview and the pixel-level capture (works in Safari) |
-| `lib/useCamera.ts` | Camera lifecycle, device switching, error messages |
+| `components/Booth.tsx` | Stage orchestrator, session state |
+| `components/Outside.tsx` | Booth exterior + setup panel |
+| `components/BoothInterior.tsx` | Full-screen booth: curtain, camera, countdown, flash, capture sequence |
+| `components/PrintSlot.tsx` | Strip prints out of the slot and develops |
+| `components/Collected.tsx` | Caption, download, share, go again |
+| `components/CameraBlocked.tsx` | "Booth closed" screen with per-browser steps |
+| `lib/look.ts` | Film look pipeline applied at capture (drift, color, vignette, halation, grain) |
+| `lib/filters.ts` | Color looks, shared by the CSS preview and the capture |
+| `lib/strip.ts` | Layouts, paper, strip rendering (preview, print animation and download all use it) |
+| `lib/sound.ts` | Synthesized Web Audio sounds + mute state |
+| `lib/useCamera.ts` | Camera lifecycle, device switching, error types |
+| `lib/settings.ts` | Setup options, defaults, pose prompts |
+
+Plans and research live in [docs/](docs/README.md).
 
 ## Deploy
 
