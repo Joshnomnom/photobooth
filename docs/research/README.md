@@ -22,6 +22,8 @@ Research done 2026-11-27. Detail and sources are in the numbered docs.
 | 10 | Film grain should follow brightness (strongest in shadows and midtones). Light leaks only work if they're subtle. Halation = blurred highlights added back with a warm tint. | Defines our film-look pipeline. | [04](04-technical.md#film-look-pipeline) |
 | 11 | Browsers only allow audio after a click or tap. iOS is strictest: create or resume the AudioContext synchronously inside a click/tap. | Unlock audio on the "start" click. | [04](04-technical.md#web-audio) |
 
+| 12 | Art direction is one big idea that every screen serves; ours lacks one. The booth has a real art history (Surrealists' "automatic writing", Warhol's strips as tiny films) and photos naturally travel booth → darkroom → gallery. | Proposal: "The Snap Room" becomes a building of rooms, each stage with its own light, sound and texture. | [05](05-art-direction.md) |
+
 ## What this means
 
 1. **Build the ritual:** step in, countdown, flash, the strip prints and develops, you collect it.

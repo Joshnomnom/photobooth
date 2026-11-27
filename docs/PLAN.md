@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (Phase 4 built, recorded sounds)_
+_Last updated: 2026-11-27 (art direction research)_
 
 ## Vision
 
@@ -177,6 +177,23 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 
 **Verified:** typecheck, lint; headless Chrome: pin → wall shows it; print sheet is 1200×1800 with a 300 dpi chunk; GIF decodes as 4 frames, infinite loop, ~0.2 s to build; wall dialog print and remove work; no console errors.
 
+### Phase 5 · Art direction ⏳ (direction chosen: building of rooms)
+
+**Goal: from "a good app" to a piece of art.** One big idea that every screen, word, sound and motion serves. Research: [05-art-direction](research/05-art-direction.md).
+
+**Proposed idea: a building of rooms.** Street (choose a machine) → Booth (shoot) → Darkroom (develop) → Studio table (decorate) → Gallery (the wall). Keywords: *nocturnal · chemical · handmade · exhibited*.
+
+- [x] Choose the direction: **building of rooms** (over darkroom-only, zine, or gallery-only)
+- [x] Real assets sourced: 15 CC0 photos/textures in `public/assets/` (curtains, brushed metal, chrome, vintage booth strips, darkroom timer, film negatives, rain-bokeh street, gallery wall, paper, cork). Map: [06-real-assets](research/06-real-assets.md); credits: `public/assets/CREDITS.txt`
+- [ ] Mood board + type pairing per room; color and light per room
+- [ ] **Street:** rain-bokeh night backdrop, booths skinned with real brushed metal/chrome/velvet, real vintage strips in each sample window; setup panel restyled as a sign or menu board
+- [ ] **Darkroom:** safelight-red room, strip rises in a developer tray, the real darkroom timer sweeping, film negatives on the drying line, chemistry sounds
+- [ ] **Studio table:** cutting-mat surface, stickers on a backing sheet, tape and grease-pencil tools
+- [ ] **Gallery:** opens on the real empty-gallery photo; white-wall exhibition for pinned strips, wall labels on aged paper, catalogue numbers
+- [ ] Room-to-room transitions (door, light switch) with reduced-motion fades
+- [ ] In-world copy pass across every screen
+- [ ] Keep: every control still clear and accessible; contrast checks on dark rooms
+
 ### Explicitly out of scope
 
 - Face reshaping or beautify filters (off-brand; body-image concerns)
@@ -215,3 +232,4 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 | 2026-11-27 | Sounds switched to CC0 recordings (Kenney, OpenGameArt) | Synthesized effects were rated awful; only the tick survives as synth |
 | 2026-11-27 | The wall is opt-in ("Pin to wall") and local-only | Keeps the privacy promise: nothing is stored unless the visitor asks, and never off the device |
 | 2026-11-27 | Own GIF encoder instead of a dependency | ~250 lines, no bundle weight from a library, full control of the palette and dithering |
+| 2026-11-27 | Art direction: "a building of rooms" (street → booth → darkroom → studio table → gallery) | One big idea that maps onto the existing stages, uses the name literally, and ties into booth art history |

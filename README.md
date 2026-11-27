@@ -48,7 +48,7 @@ The session moves through four stages: **outside → booth → printing → coll
 | `lib/useCamera.ts` | Camera lifecycle, device switching, error types |
 | `lib/settings.ts` | Setup options, defaults, pose prompts |
 
-Plans and research live in [docs/](docs/README.md). Sound credits: [public/sounds/CREDITS.txt](public/sounds/CREDITS.txt).
+Plans and research live in [docs/](docs/README.md). Sound credits: [public/sounds/CREDITS.txt](public/sounds/CREDITS.txt). Image credits: [public/assets/CREDITS.txt](public/assets/CREDITS.txt).
 
 ## Deploy
 

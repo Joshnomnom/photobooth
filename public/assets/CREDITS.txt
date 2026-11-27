@@ -1,0 +1,80 @@
+Images used by The Snap Room
+
+All images are CC0 1.0 (public domain dedication): https://creativecommons.org/publicdomain/zero/1.0/
+They were found through Openverse (https://openverse.org) with the CC0/public-domain filter,
+then resized and re-encoded to WebP. No attribution is required, but credit is given where known.
+
+booth-strip-a.webp
+  "Photo Booth (n.d.)" by vernacularwench
+  Source: https://www.flickr.com/photos/191815555@N02/52622060319
+  License: CC0 (CC0 badge confirmed on the source page)
+
+booth-strip-b.webp
+  "Photo Booth (n.d.)" by vernacularwench
+  Source: https://www.flickr.com/photos/191815555@N02/52621800631
+  License: CC0 (CC0 badge confirmed on the source page)
+
+booth-strip-vintage.webp
+  "Untitled (Photo Booth Strip)"
+  Source: https://www.rawpixel.com/image/8883970/untitled-photo-booth-strip
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+cork.webp
+  "Cork board texture"
+  Source: https://www.rawpixel.com/image/5903400/cork-board-texture-free-public-domain-cc0-photo
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+curtain-flat.webp
+  "Free red show curtains image"
+  Source: https://www.rawpixel.com/image/5906575/photo-image-public-domain-art-red
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+curtain-folds.webp
+  "Close red velvet curtain" by Markus Spiske
+  Source: https://www.rawpixel.com/image/432968/free-photo-image-curtain-red-velvet
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+curtain-lit.webp
+  "Free red show curtains image"
+  Source: https://www.rawpixel.com/image/5920962/photo-image-public-domain-shadow-art
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+darkroom-timer.webp
+  "Darkroom timer from the studio of H.C. Anderson" by Dimco Gray Corporation, American, founded 1924
+  Source: https://nmaahc.si.edu/object/nmaahc_2007.1.2
+  License: CC0 (Smithsonian Open Access (CC0), as indexed by Openverse (page behind a bot check))
+
+film-strip.webp
+  "Government" by ₡ґǘșϯγ Ɗᶏ Ⱪᶅṏⱳդ
+  Source: https://www.flickr.com/photos/148598741@N02/51141591782
+  License: CC0 (CC0 badge confirmed on the source page)
+
+gallery-wall.webp
+  "White Frames grey wall art"
+  Source: https://www.rawpixel.com/image/5974913/white-frames-grey-wall-art-museum
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+metal-brushed.webp
+  "Untitled"
+  Source: https://www.rawpixel.com/image/5937294/free-public-domain-cc0-photo
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+metal-chrome.webp
+  "Industrial Texture" by Travis Soule
+  Source: https://stocksnap.io/photo/industrial-texture-WY2JNEOKWB
+  License: CC0 (StockSnap licenses all photos CC0 (page behind a bot check))
+
+paper-old.webp
+  "Free old paper texture image"
+  Source: https://www.rawpixel.com/image/5913072/image-paper-texture-old
+  License: CC0 (rawpixel public-domain (CC0) collection, as indexed by Openverse (page behind a bot check))
+
+street-bokeh.webp
+  "Rain bokeh" by freestocks.org
+  Source: https://www.flickr.com/photos/135396164@N05/35715398005
+  License: CC0 (CC0 badge confirmed on the source page)
+
+street-lisbon.webp
+  "LISBON IN THE NIGHT RAIN" by Terry Kearney
+  Source: https://www.flickr.com/photos/24490288@N04/10604014063
+  License: CC0 (CC0 badge confirmed on the source page)
