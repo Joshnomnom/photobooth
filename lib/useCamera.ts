@@ -56,14 +56,25 @@ export function useCamera() {
     setErrorKind(null);
     release();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints: MediaStreamConstraints = {
         audio: false,
         video: {
           ...(id ? { deviceId: { exact: id } } : { facingMode: "user" }),
           width: { ideal: 1920 },
           height: { ideal: 1440 },
         },
-      });
+      };
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        // Some webcams need a moment to be released after the last session. Retry once.
+        const transient = err instanceof DOMException && ["NotReadableError", "AbortError", "NotFoundError"].includes(err.name);
+        if (!transient || token !== requestRef.current) throw err;
+        await new Promise((r) => setTimeout(r, 600));
+        if (token !== requestRef.current) return;
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      }
       if (token !== requestRef.current) {
         stream.getTracks().forEach((t) => t.stop());
         return;

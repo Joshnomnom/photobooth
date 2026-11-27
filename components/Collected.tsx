@@ -76,7 +76,7 @@ export function Collected({ strip, onCaption, onShowDate, onAgain, onSetup }: Pr
             value={strip.caption}
             onChange={(e) => onCaption(e.target.value)}
             maxLength={40}
-            placeholder="The Snap Room"
+            placeholder={strip.style.defaultCaption}
             className="h-11 w-full rounded-lg border border-line bg-card px-3 text-sm placeholder:text-muted/70"
           />
         </label>

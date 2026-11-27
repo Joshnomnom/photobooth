@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { filterToCss } from "@/lib/filters";
 import { capturePhoto, lookFor, type Shot } from "@/lib/look";
 import { shuffle } from "@/lib/random";
@@ -9,6 +9,7 @@ import { play, vibrate } from "@/lib/sound";
 import { shotCount } from "@/lib/strip";
 import { useCamera } from "@/lib/useCamera";
 import { CameraBlocked } from "./CameraBlocked";
+import { Countdown } from "./Countdown";
 import { MuteButton } from "./MuteButton";
 
 type Props = {
@@ -37,7 +38,8 @@ function wait(ms: number, signal: AbortSignal) {
 export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }: Props) {
   const camera = useCamera();
   const { start: startCamera } = camera;
-  const { layout, filter } = resolve(settings);
+  const { machine, layout, filter } = resolve(settings);
+  const profile = machine.sound;
   const look = lookFor(filter);
   const film = settings.mode === "film";
   const total = shotCount(layout);
@@ -86,14 +88,15 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         if (slot === -1) break;
         setPosing(slot);
         const count = first ? Number(settings.timer) : Math.min(3, Number(settings.timer));
+        if (profile === "plastic") play("charge");
         for (let n = count; n > 0; n--) {
           setCountdown(n);
-          play("tick");
+          play("tick", { profile });
           await wait(1000, ctrl.signal);
         }
         setCountdown(null);
         const shot = capturePhoto(video, latest.current.filter, latest.current.mirror, (seed + slot * 7919) >>> 0);
-        play("shutter");
+        play("shutter", { profile });
         vibrate(30);
         setFlashKey((k) => k + 1);
         latest.current.shots = current.map((s, i) => (i === slot ? shot : s));
@@ -115,7 +118,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
       setPosing(null);
       setRunning(false);
     }
-  }, [camera.videoRef, settings.timer, seed, film, onShot, onPrint]);
+  }, [camera.videoRef, settings.timer, seed, film, onShot, onPrint, profile]);
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);
 
@@ -156,13 +159,13 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
           : "One photo per press. Tap a photo below to retake it.";
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Inside the photo booth" className="fixed inset-0 z-50 flex flex-col bg-[#0e0d0c] text-[#f3eee6]">
+    <div role="dialog" aria-modal="true" aria-label="Inside the photo booth" className="fixed inset-0 z-50 flex flex-col text-[#f3eee6]" style={{ background: machine.interior }}>
       <header className="flex items-center justify-between gap-3 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
         <button type="button" onClick={exit} className="h-11 rounded-full px-3 text-sm text-white/70 hover:bg-white/10 hover:text-white">
           ← Leave booth
         </button>
         <p className="hidden text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50 sm:block">
-          {film ? "Film" : "Digital"} · {layout.name} · {filter.name}
+          {machine.year} {machine.name} · {film ? "Film" : "Digital"} · {layout.name}
         </p>
         <div className="flex items-center gap-1">
           {camera.devices.length > 1 && (
@@ -215,14 +218,22 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
 
           {countdown !== null && (
             <div className="absolute inset-0 grid place-items-center" aria-live="assertive">
-              <span key={countdown} className="booth-count animate-count">
-                {countdown}
-              </span>
+              <Countdown value={countdown} variant={machine.countdown} />
             </div>
           )}
 
           {/* Curtain */}
-          <div className={`pointer-events-none absolute inset-0 ${live ? "curtain-open" : ""}`} aria-hidden>
+          <div
+            className={`pointer-events-none absolute inset-0 ${live ? "curtain-open" : ""}`}
+            style={
+              {
+                "--curtain-a": machine.exterior.curtain[0],
+                "--curtain-b": machine.exterior.curtain[1],
+                "--curtain-c": machine.exterior.curtain[2],
+              } as CSSProperties
+            }
+            aria-hidden
+          >
             <div className="booth-curtain curtain-l absolute inset-y-0 left-0 w-1/2" />
             <div className="booth-curtain curtain-r absolute inset-y-0 right-0 w-1/2" />
           </div>
@@ -304,7 +315,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         <p className="mt-3 min-h-4 text-center text-xs text-white/50">{hint}</p>
       </footer>
 
-      {flashKey > 0 && <div key={flashKey} className="animate-flash pointer-events-none fixed inset-0 z-[60] bg-white" aria-hidden />}
+      {flashKey > 0 && <div key={flashKey} className="animate-flash pointer-events-none fixed inset-0 z-[60]" style={{ background: machine.flash }} aria-hidden />}
     </div>
   );
 }

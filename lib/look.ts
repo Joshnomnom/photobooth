@@ -9,7 +9,7 @@
 import { compileOps, type Filter, type LookParams } from "./filters";
 import { rng } from "./random";
 
-export const DEFAULT_LOOK: LookParams = { grain: 0.09, vignette: 0.32, halation: 0.3, drift: 0.05 };
+export const DEFAULT_LOOK: LookParams = { grain: 0.09, vignette: 0.32, halation: 0.3, drift: 0.05, leak: 0, flash: 0 };
 
 export const lookFor = (filter: Filter): LookParams => ({ ...DEFAULT_LOOK, ...filter.look });
 
@@ -80,9 +80,10 @@ function develop(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, filte
         g = ng;
         b = nb;
       }
-      if (vig > 0) {
-        const t = clamp01((Math.hypot(x - cx, y - cy) / maxR - 0.35) / 0.65);
-        const k = 1 - vig * t * t * (3 - 2 * t);
+      if (vig > 0 || look.flash > 0) {
+        const dist = Math.hypot(x - cx, y - cy) / maxR;
+        const t = clamp01((dist - 0.35) / 0.65);
+        const k = (1 - vig * t * t * (3 - 2 * t)) * (1 + look.flash * Math.max(0, 1 - dist * 1.6));
         r *= k;
         g *= k;
         b *= k;
@@ -96,6 +97,9 @@ function develop(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, filte
 
   // 4. Halation: bright areas → blurred warm glow, screened back on top.
   if (look.halation > 0) addHalation(canvas, ctx, look.halation);
+
+  // 4b. Light leak: a warm blob bleeding in from an edge, on some frames only.
+  if (look.leak > 0 && rand() < look.leak) addLightLeak(ctx, w, h, rand);
 
   // 5. Grain last, so it sits on top. Monochrome, strongest in shadows/midtones.
   if (look.grain > 0) {
@@ -150,6 +154,23 @@ function addHalation(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, s
   ctx.drawImage(small, 0, 0, w, h);
   ctx.globalAlpha = strength;
   ctx.drawImage(tiny, 0, 0, w, h);
+  ctx.restore();
+}
+
+function addLightLeak(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number) {
+  const fromLeft = rand() < 0.5;
+  const x = fromLeft ? -w * 0.05 : w * 1.05;
+  const y = h * (0.15 + rand() * 0.7);
+  const r = w * (0.45 + rand() * 0.35);
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, "rgba(255,190,110,0.95)");
+  g.addColorStop(0.35, "rgba(255,105,45,0.6)");
+  g.addColorStop(1, "rgba(255,60,20,0)");
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = 0.35 + rand() * 0.35;
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
   ctx.restore();
 }
 

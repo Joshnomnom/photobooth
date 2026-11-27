@@ -1,8 +1,10 @@
 "use client";
 
-import { FILTERS } from "@/lib/filters";
-import { type Settings, type Timer, resolve } from "@/lib/settings";
-import { FRAMES, LAYOUTS, shotCount } from "@/lib/strip";
+import { useEffect, useRef } from "react";
+import { MACHINES } from "@/lib/machines";
+import { type Settings, type Timer, resolve, withMachine } from "@/lib/settings";
+import { layoutById, shotCount } from "@/lib/strip";
+import { BoothCabinet } from "./BoothCabinet";
 import { MuteButton } from "./MuteButton";
 import { OptionGroup } from "./OptionGroup";
 
@@ -12,63 +14,141 @@ type Props = {
   onStart: () => void;
 };
 
-const BULBS = Array.from({ length: 11 });
-
-/** The booth seen from outside: the machine front, plus the setup panel. */
+/** Outside: a row of booths to walk along (swipe on mobile), plus setup for the chosen one. */
 export function Outside({ settings, onChange, onStart }: Props) {
-  const { layout, frame } = resolve(settings);
+  const { machine, layout, paper } = resolve(settings);
+  const index = MACHINES.findIndex((m) => m.id === machine.id);
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => onChange({ ...settings, [key]: value });
 
+  const scroller = useRef<HTMLDivElement>(null);
+  const latest = useRef({ settings, index, onChange });
+  useEffect(() => {
+    latest.current = { settings, index, onChange };
+  });
+
+  const scrollToIndex = (i: number, smooth = true) => {
+    const el = scroller.current;
+    const item = el?.children[i] as HTMLElement | undefined;
+    if (!el || !item) return;
+    const left = item.offsetLeft - (el.clientWidth - item.clientWidth) / 2;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left, behavior: smooth && !reduce ? "smooth" : "auto" });
+  };
+
+  // Start centered on the selected booth.
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (mounted.current) return;
+    mounted.current = true;
+    scrollToIndex(latest.current.index, false);
+  }, []);
+
+  // After a swipe settles, select the booth nearest the center.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    let timer = 0;
+    const onScroll = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const center = el.scrollLeft + el.clientWidth / 2;
+        let nearest = 0;
+        let best = Infinity;
+        [...el.children].forEach((child, i) => {
+          const c = child as HTMLElement;
+          const d = Math.abs(c.offsetLeft + c.clientWidth / 2 - center);
+          if (d < best) {
+            best = d;
+            nearest = i;
+          }
+        });
+        const cur = latest.current;
+        if (nearest !== cur.index) cur.onChange(withMachine(cur.settings, MACHINES[nearest]));
+      }, 120);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  const select = (i: number) => {
+    const next = (i + MACHINES.length) % MACHINES.length;
+    onChange(withMachine(settings, MACHINES[next]));
+    scrollToIndex(next);
+  };
+
   return (
-    <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14">
-      {/* Machine front */}
-      <div className="booth-cabinet mx-auto w-full max-w-[400px]">
-        <div className="rounded-t-[28px] bg-ink px-5 pb-4 pt-4 text-center text-[#fbe3b5]">
-          <Bulbs />
-          <p className="mt-3 font-display text-[clamp(2rem,8vw,2.6rem)] italic leading-none">The Snap Room</p>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#fbe3b5]/70">
-            {shotCount(layout)} poses · developed while you wait
-          </p>
-          <div className="mt-3">
-            <Bulbs />
-          </div>
-        </div>
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12">
+      {/* The row of booths */}
+      <div className="min-w-0">
+        <OptionGroup
+          label="Choose a machine"
+          value={machine.id}
+          onChange={(id) => select(MACHINES.findIndex((m) => m.id === id))}
+          options={MACHINES.map((m) => ({
+            id: m.id,
+            label: (
+              <>
+                <span className="font-display italic">{m.year}</span> {m.name}
+              </>
+            ),
+          }))}
+        />
 
-        <div className="bg-accent px-5 pb-6 pt-5 sm:px-6">
-          <div className="booth-curtain relative grid aspect-[4/5] place-items-center overflow-hidden rounded-lg">
-            <div className="booth-sign rotate-[-3deg] rounded-md bg-[#fbf3e4] px-5 py-3 text-center text-ink shadow-lg">
-              <p className="font-display text-2xl italic leading-none">Step inside</p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">Booth is open</p>
-            </div>
+        <div className="relative mt-4">
+          <div
+            ref={scroller}
+            className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto pb-6 pt-2"
+            style={{ paddingInline: "calc(50% - min(39vw, 155px))" }}
+            aria-label="Booths"
+          >
+            {MACHINES.map((m, i) => (
+              <div key={m.id} className="w-[min(78vw,310px)] shrink-0 snap-center">
+                <BoothCabinet
+                  machine={m}
+                  active={i === index}
+                  shots={shotCount(i === index ? layout : layoutById(m.layouts[0]))}
+                  onSelect={() => select(i)}
+                  onStart={onStart}
+                />
+              </div>
+            ))}
           </div>
-
-          <div className="mt-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-[#fff1e8]">
-              <span className="h-11 w-2.5 rounded-full bg-black/55 shadow-[inset_0_2px_4px_rgb(0_0_0/0.6)]" aria-hidden />
-              <span className="text-[11px] font-semibold uppercase leading-tight tracking-[0.18em]">
-                Insert
-                <br />
-                smile
-              </span>
-            </div>
-            <button type="button" onClick={onStart} className="booth-start">
-              <span className="sr-only">Start the photo booth</span>
-              <span aria-hidden>Start</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => select(index - 1)}
+            aria-label="Previous machine"
+            className="absolute left-0 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-lg shadow-md hover:bg-white sm:grid"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => select(index + 1)}
+            aria-label="Next machine"
+            className="absolute right-0 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-lg shadow-md hover:bg-white sm:grid"
+          >
+            ›
+          </button>
         </div>
-        <div className="mx-3 h-5 rounded-b-xl bg-[#9c2f1d]" aria-hidden />
-        <p className="mt-5 text-center text-xs text-muted">Your camera stays on this device. Nothing is uploaded.</p>
+        <p className="text-center text-xs text-muted">
+          <span className="sm:hidden">Swipe to walk along the booths. </span>Your camera stays on this device.
+        </p>
       </div>
 
-      {/* Setup */}
+      {/* Setup for the chosen machine */}
       <section aria-labelledby="setup-title" className="rounded-2xl border border-line bg-card/70 p-5 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 id="setup-title" className="font-display text-2xl">Set up your strip</h2>
-            <p className="mt-1 text-sm text-muted">Pick your look, then press Start.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">Set up your strip</p>
+            <h2 id="setup-title" className="mt-1 font-display text-2xl">
+              <span className="italic">{machine.year}</span> {machine.name}
+            </h2>
+            <p className="mt-1 text-sm text-muted">{machine.tagline}</p>
           </div>
-          <MuteButton className="-mr-2 -mt-1 text-muted hover:bg-ink/5 hover:text-ink" />
+          <MuteButton className="-mr-2 -mt-1 shrink-0 text-muted hover:bg-ink/5 hover:text-ink" />
         </div>
 
         <div className="space-y-5">
@@ -77,8 +157,8 @@ export function Outside({ settings, onChange, onStart }: Props) {
             value={settings.mode}
             onChange={(v) => set("mode", v)}
             options={[
-              { id: "film", label: "Film", title: "One press, the whole strip. No retakes, like a real booth." },
-              { id: "digital", label: "Digital", title: "One shot per press. Retake as often as you like." },
+              { id: "film", label: "Film" },
+              { id: "digital", label: "Digital" },
             ]}
           />
           <p className="-mt-3 text-xs text-muted">
@@ -88,26 +168,20 @@ export function Outside({ settings, onChange, onStart }: Props) {
           </p>
           <OptionGroup
             label="Strip"
-            value={settings.layoutId}
+            value={layout.id}
             onChange={(v) => set("layoutId", v)}
-            options={LAYOUTS.map((l) => ({ id: l.id, label: l.name }))}
-          />
-          <OptionGroup
-            label="Film look"
-            value={settings.filterId}
-            onChange={(v) => set("filterId", v)}
-            options={FILTERS.map((f) => ({ id: f.id, label: f.name }))}
+            options={machine.layouts.map((id) => ({ id, label: layoutById(id).name }))}
           />
           <OptionGroup
             label="Paper"
-            value={frame.id}
-            onChange={(v) => set("frameId", v)}
-            options={FRAMES.map((f) => ({
-              id: f.id,
+            value={paper.id}
+            onChange={(v) => set("paperId", v)}
+            options={machine.papers.map((p) => ({
+              id: p.id,
               label: (
                 <>
-                  <span className="size-3.5 rounded-full border border-black/15" style={{ background: f.paper }} aria-hidden />
-                  {f.name}
+                  <span className="size-3.5 rounded-full border border-black/15" style={{ background: p.paper }} aria-hidden />
+                  {p.name}
                 </>
               ),
             }))}
@@ -129,16 +203,6 @@ export function Outside({ settings, onChange, onStart }: Props) {
           </label>
         </div>
       </section>
-    </div>
-  );
-}
-
-function Bulbs() {
-  return (
-    <div className="flex justify-between px-1" aria-hidden>
-      {BULBS.map((_, i) => (
-        <span key={i} className="booth-bulb" style={{ animationDelay: `${(i % 3) * 0.6}s` }} />
-      ))}
     </div>
   );
 }

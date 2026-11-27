@@ -1,13 +1,15 @@
-import { FILTERS } from "./filters";
-import { FRAMES, LAYOUTS } from "./strip";
+import { DEFAULT_MACHINE, type Machine, machineById } from "./machines";
+import { layoutById } from "./strip";
 
 export type Mode = "film" | "digital";
 export type Timer = "3" | "5" | "10";
 
 export type Settings = {
+  machineId: string;
+  /** Paper within the machine's set. */
+  paperId: string;
+  /** Layout within the machine's set. */
   layoutId: string;
-  filterId: string;
-  frameId: string;
   timer: Timer;
   /** Film: one press shoots the whole strip, no retakes. Digital: one shot per press, retakes allowed. */
   mode: Mode;
@@ -15,19 +17,31 @@ export type Settings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  layoutId: "strip-4",
-  filterId: "warm",
-  frameId: "paper",
+  machineId: DEFAULT_MACHINE.id,
+  paperId: DEFAULT_MACHINE.papers[0].id,
+  layoutId: DEFAULT_MACHINE.layouts[0],
   timer: "3",
   mode: "film",
   mirror: true,
 };
 
-export function resolve(settings: Settings) {
+/** Switching machines keeps paper/layout only if the new machine offers them. */
+export function withMachine(settings: Settings, machine: Machine): Settings {
   return {
-    layout: LAYOUTS.find((l) => l.id === settings.layoutId) ?? LAYOUTS[0],
-    filter: FILTERS.find((f) => f.id === settings.filterId) ?? FILTERS[0],
-    frame: FRAMES.find((f) => f.id === settings.frameId) ?? FRAMES[0],
+    ...settings,
+    machineId: machine.id,
+    paperId: machine.papers.some((p) => p.id === settings.paperId) ? settings.paperId : machine.papers[0].id,
+    layoutId: machine.layouts.includes(settings.layoutId) ? settings.layoutId : machine.layouts[0],
+  };
+}
+
+export function resolve(settings: Settings) {
+  const machine = machineById(settings.machineId);
+  return {
+    machine,
+    filter: machine.filter,
+    paper: machine.papers.find((p) => p.id === settings.paperId) ?? machine.papers[0],
+    layout: layoutById(machine.layouts.includes(settings.layoutId) ? settings.layoutId : machine.layouts[0]),
   };
 }
 

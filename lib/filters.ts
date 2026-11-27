@@ -8,8 +8,8 @@
  * captured shots.
  */
 
-type OpName = "brightness" | "contrast" | "saturate" | "sepia" | "grayscale" | "hue-rotate";
-type Op = readonly [OpName, number];
+export type OpName = "brightness" | "contrast" | "saturate" | "sepia" | "grayscale" | "hue-rotate";
+export type Op = readonly [OpName, number];
 
 /** Film character applied on top of the color ops (see lib/look.ts). All values are 0–1-ish strengths. */
 export type LookParams = {
@@ -21,6 +21,10 @@ export type LookParams = {
   halation: number;
   /** Random per-shot exposure / white-balance drift. */
   drift: number;
+  /** Chance and strength of a warm light leak on a frame. */
+  leak: number;
+  /** Harsh on-camera flash: bright center, falling off to the edges. */
+  flash: number;
 };
 
 export type Filter = {
@@ -30,17 +34,7 @@ export type Filter = {
   look?: Partial<LookParams>;
 };
 
-export const FILTERS: readonly Filter[] = [
-  { id: "none", name: "Natural", ops: [], look: { grain: 0.06, halation: 0.2 } },
-  { id: "warm", name: "Warm", ops: [["sepia", 0.22], ["saturate", 1.2], ["brightness", 1.04]] },
-  { id: "pop", name: "Pop", ops: [["contrast", 1.15], ["saturate", 1.5]] },
-  { id: "soft", name: "Soft", ops: [["contrast", 0.85], ["brightness", 1.1], ["saturate", 0.8]] },
-  { id: "film", name: "Film", ops: [["sepia", 0.35], ["contrast", 0.92], ["saturate", 0.85]] },
-  { id: "cool", name: "Cool", ops: [["hue-rotate", -12], ["saturate", 0.9], ["brightness", 1.05]] },
-  { id: "rose", name: "Rose", ops: [["sepia", 0.15], ["hue-rotate", -20], ["saturate", 1.2]] },
-  { id: "mono", name: "Mono", ops: [["grayscale", 1], ["contrast", 1.2], ["brightness", 1.05]], look: { grain: 0.13 } },
-  { id: "noir", name: "Noir", ops: [["grayscale", 1], ["contrast", 1.6], ["brightness", 0.9]], look: { grain: 0.16, vignette: 0.5 } },
-];
+
 
 export function filterToCss(filter: Filter): string {
   if (filter.ops.length === 0) return "none";

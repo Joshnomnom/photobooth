@@ -6,12 +6,12 @@ import { drawStrip, type StripOptions } from "@/lib/strip";
 /** Live preview of the finished strip, drawn with the same code as the download. */
 export function StripPreview(props: StripOptions) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const { layout, frame, shots, caption, showDate, fonts } = props;
+  const { layout, paper, style, shots, caption, showDate, fonts, seed } = props;
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    const opts = { layout, frame, shots, caption, showDate, fonts };
+    const opts = { layout, paper, style, shots, caption, showDate, fonts, seed };
     drawStrip(canvas, opts);
     // Redraw once web fonts finish loading so the caption uses the right face.
     let cancelled = false;
@@ -21,7 +21,7 @@ export function StripPreview(props: StripOptions) {
     return () => {
       cancelled = true;
     };
-  }, [layout, frame, shots, caption, showDate, fonts]);
+  }, [layout, paper, style, shots, caption, showDate, fonts, seed]);
 
   const filled = shots.filter(Boolean).length;
   return (

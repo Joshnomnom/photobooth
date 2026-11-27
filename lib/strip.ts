@@ -1,5 +1,8 @@
+import type { FontKey, Fonts } from "./fonts";
 import { PHOTO_H, PHOTO_W } from "./look";
+import type { Paper, StripStyle } from "./machines";
 import { rng } from "./random";
+import { drawSevenSeg, stampText, textWidth } from "./sevenSeg";
 
 export type Layout = { id: string; name: string; cols: number; rows: number };
 
@@ -10,39 +13,24 @@ export const LAYOUTS: readonly Layout[] = [
   { id: "grid-6", name: "Grid · 6", cols: 2, rows: 3 },
 ];
 
+export const layoutById = (id: string) => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
 export const shotCount = (layout: Layout) => layout.cols * layout.rows;
-
-export type Frame = {
-  id: string;
-  name: string;
-  /** Strip background. */
-  paper: string;
-  /** Caption and placeholder text. */
-  ink: string;
-  /** Empty-slot fill. */
-  slot: string;
-};
-
-export const FRAMES: readonly Frame[] = [
-  { id: "paper", name: "Paper", paper: "#fbf8f2", ink: "#1c1a17", slot: "#ebe5da" },
-  { id: "noir", name: "Noir", paper: "#151413", ink: "#f3eee6", slot: "#2a2826" },
-  { id: "tomato", name: "Tomato", paper: "#e5482f", ink: "#fff6ef", slot: "#c93b25" },
-  { id: "butter", name: "Butter", paper: "#f5d76e", ink: "#2b2414", slot: "#e6c75c" },
-  { id: "sky", name: "Sky", paper: "#bcd9ee", ink: "#14283a", slot: "#a7c8e0" },
-  { id: "sage", name: "Sage", paper: "#c9dbc6", ink: "#1b2b1d", slot: "#b4caae" },
-];
 
 /** Color of a photo that hasn't developed yet: murky grey-green, like fresh print paper. */
 const UNDEVELOPED = "#a9a596";
 
+const WEIGHT: Record<FontKey, number> = { display: 400, body: 700, typewriter: 700, groovy: 400, rounded: 700 };
+
 export type StripOptions = {
   layout: Layout;
-  frame: Frame;
+  paper: Paper;
+  style: StripStyle;
   shots: readonly (HTMLCanvasElement | null)[];
   caption: string;
   showDate: boolean;
-  /** Font families as resolved by next/font. */
-  fonts: { display: string; body: string };
+  fonts: Fonts;
+  /** Seeds decoration placement so it stays put between redraws. */
+  seed: number;
   /** Draw photo slots as blank, undeveloped paper (used for the print animation). */
   undeveloped?: boolean;
 };
@@ -72,17 +60,26 @@ function getPaperTile() {
   return c;
 }
 
+function roundedPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  if (r > 0 && ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+type Rect = { x: number; y: number; w: number; h: number };
+
 /**
  * Draws the finished strip. The on-screen preview, the print animation and
  * the downloaded file all come from this function, so they always match.
  */
 export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
-  const { layout, frame, shots, caption, showDate, fonts, undeveloped } = opts;
+  const { layout, paper, style, shots, caption, showDate, fonts, undeveloped, seed } = opts;
   const cellW = layout.cols === 1 ? 900 : 720;
   const cellH = (cellW * PHOTO_H) / PHOTO_W;
   const pad = Math.round(cellW * 0.07);
   const gap = Math.round(cellW * 0.035);
-  const footer = Math.round(cellW * (layout.cols === 1 ? 0.26 : 0.36));
+  const footer = Math.round(cellW * style.footer * (layout.cols === 1 ? 1 : 1.35));
+  const radius = style.photoRadius * cellW;
 
   const width = pad * 2 + layout.cols * cellW + (layout.cols - 1) * gap;
   const height = pad + layout.rows * cellH + (layout.rows - 1) * gap + footer;
@@ -91,7 +88,7 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  ctx.fillStyle = frame.paper;
+  ctx.fillStyle = paper.paper;
   ctx.fillRect(0, 0, width, height);
   const pattern = ctx.createPattern(getPaperTile(), "repeat");
   if (pattern) {
@@ -99,55 +96,155 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
     ctx.fillRect(0, 0, width, height);
   }
 
+  const photos: Rect[] = [];
   for (let i = 0; i < shotCount(layout); i++) {
     const col = i % layout.cols;
     const row = Math.floor(i / layout.cols);
     const x = pad + col * (cellW + gap);
     const y = pad + row * (cellH + gap);
+    photos.push({ x, y, w: cellW, h: cellH });
     const shot = shots[i];
+
+    ctx.save();
+    roundedPath(ctx, x, y, cellW, cellH, radius);
+    ctx.clip();
     if (undeveloped) {
       ctx.fillStyle = UNDEVELOPED;
       ctx.fillRect(x, y, cellW, cellH);
     } else if (shot) {
       ctx.drawImage(shot, x, y, cellW, cellH);
+      if (showDate && style.date === "stamp") drawDateStamp(ctx, x, y, cellW, cellH);
     } else {
-      ctx.fillStyle = frame.slot;
+      ctx.fillStyle = paper.slot;
       ctx.fillRect(x, y, cellW, cellH);
-      ctx.fillStyle = frame.ink;
+      ctx.fillStyle = paper.ink;
       ctx.globalAlpha = 0.35;
       ctx.font = `400 ${Math.round(cellH * 0.28)}px ${fonts.display}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(String(i + 1), x + cellW / 2, y + cellH / 2);
-      ctx.globalAlpha = 1;
     }
+    ctx.restore();
+
     // A soft edge where the photo meets the paper.
     ctx.strokeStyle = "rgba(0,0,0,0.14)";
     ctx.lineWidth = 2;
-    ctx.strokeRect(x + 1, y + 1, cellW - 2, cellH - 2);
+    roundedPath(ctx, x + 1, y + 1, cellW - 2, cellH - 2, radius);
+    ctx.stroke();
   }
 
+  if (style.decorations === "sparkles") drawSparkles(ctx, width, height, photos, pad, paper.ink, seed);
+
+  // Footer: caption, then the date if it isn't stamped on the photos.
   const footerTop = height - footer;
-  ctx.fillStyle = frame.ink;
+  const dateInFooter = showDate && style.date === "footer";
+  const maxTextW = width - pad * 2;
+  const spaced = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+  const setSpacing = (v: string) => {
+    if ("letterSpacing" in spaced) spaced.letterSpacing = v;
+  };
+
+  let title = caption.trim() || style.defaultCaption;
+  if (style.captionUpper) title = title.toUpperCase();
+  const size = Math.round(footer * style.captionScale);
+  ctx.font = `${style.captionItalic ? "italic " : ""}${WEIGHT[style.captionFont]} ${size}px ${fonts[style.captionFont]}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const title = caption.trim() || "The Snap Room";
-  ctx.font = `italic 400 ${Math.round(footer * 0.3)}px ${fonts.display}`;
-  const maxTextW = width - pad * 2;
-  ctx.fillText(title, width / 2, footerTop + footer * (showDate ? 0.4 : 0.5), maxTextW);
+  setSpacing(style.captionUpper ? `${Math.round(size * 0.12)}px` : "0px");
+  const ty = footerTop + footer * (dateInFooter ? 0.42 : 0.5);
+  if (style.captionOutline) {
+    ctx.lineJoin = "round";
+    ctx.lineWidth = size * 0.22;
+    ctx.strokeStyle = style.captionOutline;
+    ctx.strokeText(title, width / 2, ty, maxTextW);
+  }
+  ctx.fillStyle = paper.ink;
+  ctx.fillText(title, width / 2, ty, maxTextW);
 
-  if (showDate) {
+  if (dateInFooter) {
     const date = new Date()
       .toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
       .toUpperCase();
-    ctx.globalAlpha = 0.6;
-    ctx.font = `600 ${Math.round(footer * 0.1)}px ${fonts.body}`;
-    const spaced = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
-    if ("letterSpacing" in spaced) spaced.letterSpacing = "4px";
-    ctx.fillText(date, width / 2, footerTop + footer * 0.7, maxTextW);
-    if ("letterSpacing" in spaced) spaced.letterSpacing = "0px";
+    ctx.globalAlpha = 0.65;
+    ctx.font = `600 ${Math.round(footer * 0.11)}px ${fonts[style.dateFont]}`;
+    setSpacing("4px");
+    ctx.fillText(date, width / 2, footerTop + footer * 0.74, maxTextW);
     ctx.globalAlpha = 1;
   }
+  setSpacing("0px");
+}
+
+/** Orange seven-segment date, burned into the bottom-right of a photo. */
+function drawDateStamp(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const text = stampText();
+  const digitH = h * 0.075;
+  const unit = digitH / 18;
+  const tw = textWidth(text) * unit;
+  ctx.save();
+  ctx.fillStyle = "#ff8a2a";
+  ctx.shadowColor = "rgba(255,110,20,0.85)";
+  ctx.shadowBlur = unit * 4;
+  ctx.globalAlpha = 0.92;
+  drawSevenSeg(ctx, text, x + w - tw - w * 0.05, y + h - digitH - h * 0.06, unit);
+  ctx.restore();
+}
+
+/** Stars, hearts and sparkles scattered on the paper, never over a photo. */
+function drawSparkles(ctx: CanvasRenderingContext2D, w: number, h: number, photos: Rect[], pad: number, ink: string, seed: number) {
+  const rand = rng(seed ^ 0x51ab);
+  const target = 8 + photos.length * 3;
+  let placed = 0;
+  for (let tries = 0; tries < 400 && placed < target; tries++) {
+    const size = pad * (0.35 + rand() * 0.45);
+    const x = rand() * w;
+    const y = rand() * h;
+    const m = size * 0.7;
+    const overlaps = photos.some((p) => x > p.x - m && x < p.x + p.w + m && y > p.y - m && y < p.y + p.h + m);
+    if (overlaps || x < m || y < m || x > w - m || y > h - m) continue;
+    const kind = Math.floor(rand() * 4);
+    ctx.fillStyle = rand() < 0.55 ? ink : "#ffffff";
+    ctx.globalAlpha = 0.85;
+    if (kind === 0) star(ctx, x, y, size / 2);
+    else if (kind === 1) heart(ctx, x, y, size / 2);
+    else if (kind === 2) sparkle(ctx, x, y, size / 2);
+    else {
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    placed++;
+  }
+  ctx.globalAlpha = 1;
+}
+
+function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = (Math.PI / 5) * i - Math.PI / 2;
+    const rr = i % 2 ? r * 0.45 : r;
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function sparkle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (Math.PI / 4) * i - Math.PI / 2;
+    const rr = i % 2 ? r * 0.18 : r;
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function heart(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + r * 0.8);
+  ctx.bezierCurveTo(x - r * 1.2, y, x - r * 0.7, y - r * 0.9, x, y - r * 0.35);
+  ctx.bezierCurveTo(x + r * 0.7, y - r * 0.9, x + r * 1.2, y, x, y + r * 0.8);
+  ctx.fill();
 }
 
 export function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {

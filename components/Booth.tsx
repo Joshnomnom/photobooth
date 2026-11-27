@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { body, display } from "@/lib/fonts";
+import { CANVAS_FONTS } from "@/lib/fonts";
 import type { Shot } from "@/lib/look";
 import { randomSeed } from "@/lib/random";
 import { DEFAULT_SETTINGS, type Settings, resolve } from "@/lib/settings";
@@ -15,8 +15,6 @@ import { PrintSlot } from "./PrintSlot";
 /** outside → booth → printing → collected. See docs/PLAN.md, Phase 1. */
 type Stage = "outside" | "booth" | "printing" | "collected";
 
-const FONTS = { display: display.style.fontFamily, body: body.style.fontFamily };
-
 export function Booth() {
   const [stage, setStage] = useState<Stage>("outside");
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -25,11 +23,20 @@ export function Booth() {
   const [caption, setCaption] = useState("");
   const [showDate, setShowDate] = useState(true);
 
-  const { layout, frame } = resolve(settings);
+  const { machine, layout, paper } = resolve(settings);
 
   const strip: StripOptions = useMemo(
-    () => ({ layout, frame, shots: shots.map((s) => s?.canvas ?? null), caption, showDate, fonts: FONTS }),
-    [layout, frame, shots, caption, showDate],
+    () => ({
+      layout,
+      paper,
+      style: machine.strip,
+      shots: shots.map((s) => s?.canvas ?? null),
+      caption,
+      showDate,
+      fonts: CANVAS_FONTS,
+      seed,
+    }),
+    [layout, paper, machine, shots, caption, showDate, seed],
   );
 
   // The booth and print slot are full-screen; keep the page behind them still.
@@ -71,7 +78,7 @@ export function Booth() {
       {stage === "booth" && (
         <BoothInterior settings={settings} shots={shots} seed={seed} onShot={onShot} onPrint={toPrinting} onExit={toOutside} />
       )}
-      {stage === "printing" && <PrintSlot strip={strip} onCollect={toCollected} />}
+      {stage === "printing" && <PrintSlot strip={strip} machine={machine} onCollect={toCollected} />}
       {stage === "collected" && (
         <Collected strip={strip} onCaption={setCaption} onShowDate={setShowDate} onAgain={enterBooth} onSetup={toOutside} />
       )}

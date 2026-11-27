@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Machine } from "@/lib/machines";
 import { play } from "@/lib/sound";
 import { drawStrip, type StripOptions } from "@/lib/strip";
 
-type Props = { strip: StripOptions; onCollect: () => void };
+type Props = { strip: StripOptions; machine: Machine; onCollect: () => void };
 
 const SLIDE_MS = 3000;
 const DEVELOPED_MS = 8400; // matches the .develop animation delay + duration in globals.css
@@ -13,7 +14,8 @@ const DEVELOPED_MS = 8400; // matches the .develop animation delay + duration in
  * The signature moment: the strip slides out of the print slot and develops
  * from blank paper to full color. Tap or press any key to skip.
  */
-export function PrintSlot({ strip, onCollect }: Props) {
+export function PrintSlot({ strip, machine, onCollect }: Props) {
+  const profile = machine.sound;
   const blankRef = useRef<HTMLCanvasElement>(null);
   const finalRef = useRef<HTMLCanvasElement>(null);
   const collectRef = useRef<HTMLButtonElement>(null);
@@ -30,7 +32,7 @@ export function PrintSlot({ strip, onCollect }: Props) {
   }, [strip]);
 
   useEffect(() => {
-    play("whirr", SLIDE_MS / 1000);
+    play("whirr", { profile, duration: SLIDE_MS / 1000 });
     const t1 = window.setTimeout(() => {
       play("drop");
       setPhase((p) => (p === "printing" ? "developing" : p));
@@ -40,7 +42,7 @@ export function PrintSlot({ strip, onCollect }: Props) {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, []);
+  }, [profile]);
 
   const skip = useCallback(() => {
     setSkipped(true);
@@ -64,10 +66,13 @@ export function PrintSlot({ strip, onCollect }: Props) {
       aria-modal="true"
       aria-label="Your strip is printing"
       onPointerDown={phase === "ready" ? undefined : skip}
-      className="fixed inset-0 z-50 flex flex-col items-center overflow-hidden bg-[#0e0d0c] text-[#f3eee6]"
+      className="fixed inset-0 z-50 flex flex-col items-center overflow-hidden text-[#f3eee6]"
+      style={{ background: machine.interior }}
     >
       <div className="mt-[max(6vh,env(safe-area-inset-top))] flex w-[min(90vw,440px)] flex-col items-center">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">The Snap Room</p>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
+          The Snap Room · {machine.year} {machine.name}
+        </p>
         <div className="relative z-10 h-5 w-full rounded-full bg-black shadow-[inset_0_3px_6px_rgb(0_0_0/0.9),0_1px_0_rgb(255_255_255/0.08)]" aria-hidden />
         <div className={`-mt-2.5 overflow-hidden px-3 pb-6 pt-2.5 ${skipped ? "skip" : ""}`}>
           <div className="print-out relative">

@@ -25,15 +25,19 @@ The session moves through four stages: **outside → booth → printing → coll
 | Path | What it does |
 | --- | --- |
 | `components/Booth.tsx` | Stage orchestrator, session state |
-| `components/Outside.tsx` | Booth exterior + setup panel |
+| `components/Outside.tsx` | Row of booths (swipe/scroll) + setup panel |
+| `components/BoothCabinet.tsx` | One booth's exterior, colored by its machine |
+| `components/Countdown.tsx` | Per-machine countdown styles, incl. seven-segment LCD |
 | `components/BoothInterior.tsx` | Full-screen booth: curtain, camera, countdown, flash, capture sequence |
 | `components/PrintSlot.tsx` | Strip prints out of the slot and develops |
 | `components/Collected.tsx` | Caption, download, share, go again |
 | `components/CameraBlocked.tsx` | "Booth closed" screen with per-browser steps |
 | `lib/look.ts` | Film look pipeline applied at capture (drift, color, vignette, halation, grain) |
-| `lib/filters.ts` | Color looks, shared by the CSS preview and the capture |
-| `lib/strip.ts` | Layouts, paper, strip rendering (preview, print animation and download all use it) |
-| `lib/sound.ts` | Synthesized Web Audio sounds + mute state |
+| `lib/machines.ts` | The machines ('62, '79, '98, '04): look, papers, strip style, sounds, colors |
+| `lib/filters.ts` | Color matrix ops, shared by the CSS preview and the capture |
+| `lib/sevenSeg.ts` | Seven-segment digits for the date stamp and LCD countdown |
+| `lib/strip.ts` | Layouts and strip rendering: corners, captions, decorations, date stamp (preview, print and download all use it) |
+| `lib/sound.ts` | Synthesized Web Audio sounds with per-machine profiles + mute state |
 | `lib/useCamera.ts` | Camera lifecycle, device switching, error types |
 | `lib/settings.ts` | Setup options, defaults, pose prompts |
 

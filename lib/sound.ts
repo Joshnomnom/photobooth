@@ -7,7 +7,10 @@
 
 import { useSyncExternalStore } from "react";
 
-export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "curtain";
+export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "curtain" | "charge";
+
+/** Each machine has its own voice. See lib/machines.ts. */
+export type SoundProfile = "mechanical" | "classic" | "cute" | "plastic";
 
 const KEY = "snaproom:muted";
 let ctx: AudioContext | null = null;
@@ -111,17 +114,17 @@ function hiss(c: AudioContext, start: number, dur: number, type: BiquadFilterTyp
   src.stop(start + dur + 0.02);
 }
 
-function motor(c: AudioContext, start: number, dur: number) {
+function motor(c: AudioContext, start: number, dur: number, freq = 68, level = 0.07) {
   const osc = c.createOscillator();
   osc.type = "sawtooth";
-  osc.frequency.value = 68;
+  osc.frequency.value = freq;
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
   lp.frequency.value = 520;
   const g = c.createGain();
   g.gain.setValueAtTime(0.0001, start);
-  g.gain.exponentialRampToValueAtTime(0.07, start + 0.12);
-  g.gain.setValueAtTime(0.07, start + dur - 0.2);
+  g.gain.exponentialRampToValueAtTime(level, start + 0.12);
+  g.gain.setValueAtTime(level, start + dur - 0.2);
   g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
   // Wobble the level for a gear-train flutter.
   const lfo = c.createOscillator();
@@ -137,11 +140,18 @@ function motor(c: AudioContext, start: number, dur: number) {
   hiss(c, start, dur, "bandpass", 900, 0.025, 0.7);
 }
 
-export function play(name: SoundName, durationSec = 2.8) {
+/** Ratchet clicks, like winding a disposable camera's thumbwheel. */
+function wind(c: AudioContext, start: number) {
+  for (let i = 0; i < 7; i++) hiss(c, start + i * 0.045, 0.018, "bandpass", 3200, 0.16, 3);
+}
+
+export function play(name: SoundName, opts: { profile?: SoundProfile; duration?: number } = {}) {
   if (!ctx || isMuted()) return;
   if (ctx.state !== "running") ctx.resume().catch(() => {});
   const c = ctx;
   const t = c.currentTime + 0.01;
+  const profile = opts.profile ?? "classic";
+  const duration = opts.duration ?? 2.8;
   switch (name) {
     case "coin":
       tone(c, t, 0.3, 2637, 0.1, "triangle");
@@ -151,17 +161,55 @@ export function play(name: SoundName, durationSec = 2.8) {
       tone(c, t + 0.3, 0.15, 90, 0.25, "sine", 50);
       break;
     case "tick":
-      tone(c, t, 0.07, 1320, 0.1);
+      if (profile === "mechanical") {
+        hiss(c, t, 0.025, "bandpass", 2400, 0.25, 2);
+        tone(c, t, 0.04, 700, 0.06);
+      } else if (profile === "cute") {
+        tone(c, t, 0.09, 900, 0.1, "sine", 1700);
+      } else if (profile === "plastic") {
+        tone(c, t, 0.05, 2200, 0.035, "square");
+      } else {
+        tone(c, t, 0.07, 1320, 0.1);
+      }
+      break;
+    case "charge":
+      // Flash capacitor whine (disposables).
+      tone(c, t, 1.4, 1800, 0.018, "sine", 5600);
       break;
     case "shutter":
+      if (profile === "cute") {
+        hiss(c, t, 0.05, "highpass", 4000, 0.12);
+        tone(c, t, 0.1, 1568, 0.09, "triangle");
+        tone(c, t + 0.07, 0.25, 2093, 0.08, "triangle");
+        tone(c, t + 0.12, 0.3, 3136, 0.03);
+        break;
+      }
+      if (profile === "plastic") {
+        hiss(c, t, 0.12, "highpass", 6500, 0.05);
+        hiss(c, t, 0.02, "highpass", 4000, 0.3);
+        tone(c, t, 0.025, 420, 0.12);
+        wind(c, t + 0.35);
+        break;
+      }
       hiss(c, t, 0.12, "highpass", 6000, 0.06);
       hiss(c, t, 0.03, "highpass", 2500, 0.3);
       tone(c, t, 0.08, 150, 0.32, "sine", 60);
       hiss(c, t + 0.07, 0.035, "bandpass", 1800, 0.28, 1.2);
       tone(c, t + 0.07, 0.06, 115, 0.2, "sine", 55);
+      if (profile === "mechanical") {
+        // Heavier, slower mirror and a solenoid thunk.
+        tone(c, t + 0.12, 0.14, 85, 0.3, "sine", 40);
+        hiss(c, t + 0.13, 0.05, "lowpass", 900, 0.2);
+      }
       break;
     case "whirr":
-      motor(c, t, durationSec);
+      if (profile === "mechanical") motor(c, t, duration, 48, 0.09);
+      else if (profile === "cute") {
+        motor(c, t, duration, 120, 0.035);
+        tone(c, t + duration - 0.05, 0.25, 2637, 0.06, "triangle");
+        tone(c, t + duration + 0.08, 0.35, 3520, 0.05, "triangle");
+      } else if (profile === "plastic") motor(c, t, duration, 95, 0.05);
+      else motor(c, t, duration);
       break;
     case "drop":
       hiss(c, t, 0.06, "lowpass", 2400, 0.22);

@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (Phase 1 built)_
+_Last updated: 2026-11-27 (Phase 2 built)_
 
 ## Vision
 
@@ -100,18 +100,28 @@ Clean rebuild of the app (commit `0d1fc90`, branch `rework-booth`).
 - [ ] On portrait phones the 4:3 camera window leaves empty space; consider a taller window, or a portrait 3:4 capture for strip layouts
 - [ ] Remember the last setup (localStorage)
 
-### Phase 2 · Machines (eras) 💤
+### Phase 2 · Machines (eras) ✅ (tune on real devices)
 
-**Goal: each machine is a whole identity, not a filter.** Replaces today's Filter + Frame pickers.
+**Goal: each machine is a whole identity, not a filter.** Replaces the Filter + Paper pickers.
 
-- [ ] `Machine` config: look pipeline settings, paper, frame layout, typography, countdown style, sound variant, booth exterior color
-- [ ] Starter set (names are drafts):
-  - **'62 Chemical**: black-and-white, silver tone, heavy grain, cream paper, 4-shot strip
-  - **'79 Color**: faded warm color, halation, rounded photo corners
-  - **'98 Sticker**: bright pastel, purikura-style frame, cute type, sticker-sheet layout
-  - **'04 Disposable**: harsh flash, orange LCD-style date stamp, slight light leak
-- [ ] Machine picker on the "outside" screen: walk along a row of booths (swipe on mobile)
-- [ ] Optional: move the look pipeline to WebGL for an exact live preview
+- [x] `Machine` config (`lib/machines.ts`): film look, papers, allowed layouts, strip style (corners, caption font/case/outline, date placement, decorations), countdown style, sound profile, exterior colors, interior and flash color
+- [x] Starter set:
+  - **'62 Chemical**: silver-toned B&W, heavy grain, cream/white paper, typewriter caption, white typed countdown, heavy mechanical sounds, green enamel booth
+  - **'79 Color**: faded warm color, strong halation, rounded photo corners, groovy caption (Shrikhand), warm bulb countdown, classic sounds, orange booth with brown curtain
+  - **'98 Sticker**: bright and soft, sparkle/star/heart decorations, bubbly outlined caption (Fredoka), pink bubble countdown, cute chirpy sounds, pink booth with lavender curtain
+  - **'04 Disposable**: harsh flash hotspot, light leaks, strong vignette, orange seven-segment date stamp burned into each photo, LCD countdown, plastic click + film-wind sounds and flash-charge whine, blue booth
+- [x] Machine picker: a row of booths you scroll or swipe through (scroll-snap), plus machine tabs and prev/next buttons for mouse and keyboard
+- [x] Switching machines keeps the chosen layout/paper when the new machine offers them
+- [x] New look params: `leak` (light leaks) and `flash` (center hotspot)
+- [x] Camera: one automatic retry when a webcam is still busy from the last session
+- [ ] Optional: move the look pipeline to WebGL for an exact live preview (not needed yet; CSS approximation holds up)
+
+**Verified:** typecheck, lint; headless Chrome runs shoot full film strips with every machine; pixel checks confirm each machine's look is applied at capture; mobile swipe selects the next machine; no console errors.
+
+**Still to check by hand:**
+- [ ] Listen to each machine's sound profile
+- [ ] Tune each look on real faces (especially '04 flash/leak strength and '62 grain)
+- [ ] Check machine fonts load before the first strip on slow connections
 
 ### Phase 3 · Decorate 💤
 
@@ -163,3 +173,6 @@ Clean rebuild of the app (commit `0d1fc90`, branch `rework-booth`).
 | 2026-11-27 | Keep the name "The Snap Room" | No reason to change yet |
 | 2026-11-27 | Synthesized Web Audio sounds, no sample files | Tiny, no licensing, easy to vary per machine in Phase 2 |
 | 2026-11-27 | Camera turns off when printing starts | Privacy: the camera light goes off as soon as it isn't needed |
+| 2026-11-27 | Machines replace the free Filter + Paper pickers; each machine offers 2–3 papers and its own layouts | A coherent era identity is the differentiator; free mixing dilutes it |
+| 2026-11-27 | '79 Color is the default machine | Warm color flatters most faces and lighting; the most broadly appealing first impression |
+| 2026-11-27 | Disposable date stamp drawn as real seven-segment digits, not a font | No suitable font on Google Fonts; drawing it keeps the look exact on canvas and in the countdown |
