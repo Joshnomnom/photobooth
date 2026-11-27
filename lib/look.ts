@@ -29,7 +29,8 @@ export const lookFor = (filter: Filter): LookParams => ({ ...DEFAULT_LOOK, ...fi
 export const PHOTO_W = 1200;
 export const PHOTO_H = 900;
 
-export type Shot = { canvas: HTMLCanvasElement; thumb: string };
+/** A captured photo; `clip` holds small frames from around the moment, for live strips. */
+export type Shot = { canvas: HTMLCanvasElement; thumb: string; clip?: HTMLCanvasElement[] };
 
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 

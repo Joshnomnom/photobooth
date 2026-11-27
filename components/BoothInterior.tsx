@@ -2,9 +2,10 @@
 
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { filterToCss } from "@/lib/filters";
+import { startClip } from "@/lib/live";
 import { capturePhoto, lookFor, type Shot } from "@/lib/look";
 import { shuffle } from "@/lib/random";
-import { POSE_PROMPTS, type Settings, resolve } from "@/lib/settings";
+import { type Settings, resolve } from "@/lib/settings";
 import { play, vibrate } from "@/lib/sound";
 import { shotCount } from "@/lib/strip";
 import { useCamera } from "@/lib/useCamera";
@@ -23,6 +24,9 @@ type Props = {
 
 class Cancelled extends Error {}
 
+/** How long the live clip keeps recording after the shutter. */
+const CLIP_TAIL_MS = 450;
+
 function wait(ms: number, signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
     if (signal.aborted) return reject(new Cancelled());
@@ -38,7 +42,7 @@ function wait(ms: number, signal: AbortSignal) {
 export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }: Props) {
   const camera = useCamera();
   const { start: startCamera } = camera;
-  const { machine, layout, filter, style, sound: profile, countdown: countdownSecs, gapMs } = resolve(settings);
+  const { machine, layout, filter, style, sound: profile, countdown: countdownSecs, gapMs, prompts: promptSet } = resolve(settings);
   const look = lookFor(filter);
   const film = settings.mode === "film";
   const total = shotCount(layout);
@@ -50,7 +54,9 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
   const [posing, setPosing] = useState<number | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const [running, setRunning] = useState(false);
-  const prompts = useMemo(() => shuffle(POSE_PROMPTS, seed), [seed]);
+  const promptKey = promptSet.join("|");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- promptKey captures the prompt list's contents
+  const prompts = useMemo(() => shuffle(promptSet, seed), [promptKey, seed]);
 
   // The capture loop spans several awaits, so it reads the latest values from a ref.
   const latest = useRef({ shots, filter, mirror: settings.mirror });
@@ -77,6 +83,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
     abortRef.current = ctrl;
     setRunning(true);
     let first = true;
+    let stopClip: (() => HTMLCanvasElement[]) | null = null;
     try {
       for (;;) {
         const current = latest.current.shots;
@@ -88,13 +95,24 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         for (let n = count; n > 0; n--) {
           setCountdown(n);
           play("tick", { profile });
+          // Live strip: start grabbing frames in the last second before the shot.
+          if (n === 1) stopClip = startClip(video, latest.current.mirror);
           await wait(1000, ctrl.signal);
         }
+        if (!stopClip) {
+          // No countdown: a short pre-roll so the clip has some lead-in.
+          stopClip = startClip(video, latest.current.mirror);
+          await wait(500, ctrl.signal);
+        }
         setCountdown(null);
-        const shot = capturePhoto(video, latest.current.filter, latest.current.mirror, (seed + slot * 7919) >>> 0);
+        const still = capturePhoto(video, latest.current.filter, latest.current.mirror, (seed + slot * 7919) >>> 0);
         play("shutter", { profile });
         vibrate(30);
         setFlashKey((k) => k + 1);
+        // Keep grabbing a moment after the shutter, then attach the clip to the shot.
+        await wait(CLIP_TAIL_MS, ctrl.signal);
+        const shot = { ...still, clip: stopClip() };
+        stopClip = null;
         latest.current.shots = current.map((s, i) => (i === slot ? shot : s));
         onShot(slot, shot);
         first = false;
@@ -102,7 +120,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         // Show the next pose's prompt during the gap, so there's time to get ready even with no countdown.
         const next = latest.current.shots.findIndex((s) => !s);
         if (next !== -1) setPosing(next);
-        await wait(gapMs, ctrl.signal);
+        await wait(Math.max(0, gapMs - CLIP_TAIL_MS), ctrl.signal);
       }
       setPosing(null);
       if (film && latest.current.shots.every(Boolean)) {
@@ -112,6 +130,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
     } catch (err) {
       if (!(err instanceof Cancelled)) throw err;
     } finally {
+      stopClip?.();
       abortRef.current = null;
       setCountdown(null);
       setPosing(null);

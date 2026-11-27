@@ -37,7 +37,19 @@ export type StickerKind =
   | "rec-badge"
   | "play-badge"
   | "barcode"
-  | "paid-stamp";
+  | "paid-stamp"
+  | "text-hbd"
+  | "cake"
+  | "balloon"
+  | "partyhat"
+  | "rose-bud"
+  | "text-us"
+  | "gradcap"
+  | "text-grad"
+  | "rings"
+  | "text-justmarried"
+  | "snowflake"
+  | "gift";
 
 type Draw = (ctx: CanvasRenderingContext2D, fonts: Fonts) => void;
 
@@ -443,6 +455,182 @@ const ART: Record<StickerKind, { label: string; draw: Draw }> = {
       ctx.textBaseline = "middle";
       ctx.fillText("PAID", 0, 2);
       ctx.restore();
+    },
+  },
+  // Occasions (Phase 7).
+  "text-hbd": { label: "Happy birthday", draw: word("happy birthday", "rounded", "#ff4f8b", 30) },
+  cake: {
+    label: "Cake",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.roundRect(-40, -4, 80, 40, 6);
+      p.rect(-4, -34, 8, 30);
+      dieCut(ctx, p, "#f7d6e0");
+      ctx.fillStyle = "#ff4f8b";
+      ctx.fillRect(-40, 8, 80, 8);
+      ctx.fillStyle = "#fff4c2";
+      ctx.fillRect(-4, -34, 8, 30);
+      ctx.fillStyle = "#ffb020";
+      ctx.beginPath();
+      ctx.ellipse(0, -42, 5, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  },
+  balloon: {
+    label: "Balloon",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.ellipse(0, -12, 28, 34, 0, 0, Math.PI * 2);
+      p.moveTo(-6, 22);
+      p.lineTo(6, 22);
+      p.lineTo(0, 30);
+      p.closePath();
+      dieCut(ctx, p, "#ff5a5f");
+      ctx.strokeStyle = "#444";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 30);
+      ctx.quadraticCurveTo(12, 44, 0, 52);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.beginPath();
+      ctx.ellipse(-10, -24, 6, 10, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  },
+  partyhat: {
+    label: "Party hat",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.moveTo(0, -44);
+      p.lineTo(34, 34);
+      p.lineTo(-34, 34);
+      p.closePath();
+      dieCut(ctx, p, "#4fb6ff");
+      ctx.fillStyle = "#ffd23f";
+      for (const [x, y] of [[-8, 0], [10, 14], [-14, 22], [4, -18]]) {
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#ff4f8b";
+      ctx.beginPath();
+      ctx.arc(0, -46, 8, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  },
+  "rose-bud": {
+    label: "Rose",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.arc(0, -10, 24, 0, Math.PI * 2);
+      p.moveTo(-3, 12);
+      p.rect(-3, 12, 6, 34);
+      dieCut(ctx, p, "#d8344f");
+      ctx.strokeStyle = "rgba(120,10,30,0.6)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, -10, 14, 0.4, Math.PI * 1.7);
+      ctx.arc(2, -10, 7, Math.PI * 1.7, Math.PI * 3);
+      ctx.stroke();
+      ctx.fillStyle = "#3f8f4f";
+      ctx.fillRect(-3, 14, 6, 32);
+    },
+  },
+  "text-us": { label: "us.", draw: word("us.", "display", "#d8344f", 46, 400) },
+  gradcap: {
+    label: "Grad cap",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.moveTo(0, -30);
+      p.lineTo(50, -10);
+      p.lineTo(0, 10);
+      p.lineTo(-50, -10);
+      p.closePath();
+      p.roundRect(-28, 0, 56, 26, 6);
+      dieCut(ctx, p, "#1c1c22");
+      ctx.strokeStyle = "#ffd23f";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(36, 2);
+      ctx.lineTo(36, 28);
+      ctx.stroke();
+      ctx.fillStyle = "#ffd23f";
+      ctx.fillRect(32, 26, 8, 10);
+    },
+  },
+  "text-grad": { label: "class of", draw: word(`class of '${String(new Date().getFullYear() % 100).padStart(2, "0")}`, "display", "#1c1c22", 32, 400) },
+  rings: {
+    label: "Rings",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      for (const [x] of [[-14, "#e7c46a"], [14, "#d9dde3"]] as const) {
+        ctx.save();
+        ctx.lineWidth = 9 + OUTLINE;
+        ctx.strokeStyle = "#ffffff";
+        ctx.shadowColor = "rgba(0,0,0,0.25)";
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(x, 6, 22, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      for (const [x, color] of [[-14, "#e7c46a"], [14, "#d9dde3"]] as const) {
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, 6, 22, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#bfe8ff";
+      ctx.beginPath();
+      ctx.moveTo(-14, -26);
+      ctx.lineTo(-6, -18);
+      ctx.lineTo(-14, -10);
+      ctx.lineTo(-22, -18);
+      ctx.closePath();
+      ctx.fill();
+    },
+  },
+  "text-justmarried": { label: "just married", draw: word("just married", "display", "#9a6b2f", 30, 400) },
+  snowflake: {
+    label: "Snowflake",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      ctx.save();
+      ctx.lineCap = "round";
+      for (const [w, c] of [[14 + OUTLINE, "#ffffff"], [7, "#7cc4f2"]] as const) {
+        ctx.lineWidth = w;
+        ctx.strokeStyle = c;
+        for (let i = 0; i < 6; i++) {
+          ctx.save();
+          ctx.rotate((Math.PI / 3) * i);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -40);
+          ctx.moveTo(0, -24);
+          ctx.lineTo(-10, -34);
+          ctx.moveTo(0, -24);
+          ctx.lineTo(10, -34);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+    },
+  },
+  gift: {
+    label: "Gift",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.rect(-34, -14, 68, 50);
+      p.rect(-40, -26, 80, 14);
+      dieCut(ctx, p, "#3f9b6b");
+      ctx.fillStyle = "#e24b4b";
+      ctx.fillRect(-6, -26, 12, 62);
+      ctx.beginPath();
+      ctx.ellipse(-12, -32, 12, 7, -0.4, 0, Math.PI * 2);
+      ctx.ellipse(12, -32, 12, 7, 0.4, 0, Math.PI * 2);
+      ctx.fill();
     },
   },
 };

@@ -37,7 +37,7 @@ export function Booth() {
   const [showDate, setShowDate] = useState(true);
   const [decorations, setDecorations] = useState<Decorations>(EMPTY_DECORATIONS);
 
-  const { machine, layout, paper, style, sound } = resolve(settings);
+  const { machine, layout, paper, style, sound, filter, occasion } = resolve(settings);
 
   // Remember the setup in this browser. Loading has to wait until after hydration.
   const [loaded, setLoaded] = useState(false);
@@ -130,6 +130,10 @@ export function Booth() {
           onAgain={enterBooth}
           onSetup={toOutside}
           onGallery={toGallery}
+          clips={shots.map((s) => s?.clip)}
+          filter={filter}
+          seed={seed}
+          occasion={occasion}
         />
       )}
     </>

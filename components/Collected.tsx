@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Decorations, EMPTY_DECORATIONS, isEmpty, placeSticker } from "@/lib/decorations";
 import { downloadBlob, fileStamp } from "@/lib/download";
+import type { Filter } from "@/lib/filters";
 import { makeFlipbook } from "@/lib/flipbook";
+import { canRecordVideo, hasClips, renderBoomerangGif, renderLiveVideo } from "@/lib/live";
+import type { Occasion } from "@/lib/occasions";
 import type { Fonts } from "@/lib/fonts";
 import { type Machine, MACHINES } from "@/lib/machines";
 import { printSheet } from "@/lib/printSheet";
@@ -11,6 +14,7 @@ import { pinStrip } from "@/lib/scrapbook";
 import { play } from "@/lib/sound";
 import { drawSticker, type StickerKind, stickerLabel } from "@/lib/stickers";
 import { canvasToBlob, drawStrip, type StripOptions, stripFilename } from "@/lib/strip";
+import { PostFormats } from "./PostFormats";
 import { type Pen, StripEditor, stickerBase, type Tool } from "./StripEditor";
 
 type Props = {
@@ -23,22 +27,47 @@ type Props = {
   onAgain: () => void;
   onSetup: () => void;
   onGallery: () => void;
+  /** Live frames recorded around each shot (for the live strip and boomerang). */
+  clips: (HTMLCanvasElement[] | undefined)[];
+  filter: Filter;
+  seed: number;
+  occasion?: Occasion;
 };
+
+type KeepKind = "pin" | "print" | "gif" | "live" | "boomerang";
 
 const CHALLENGE_SECONDS = 60;
 
 /** The strip in your hands: decorate it (purikura style), caption it, save it, or go again. */
-export function Collected({ strip, machine, decorations, onDecorations, onCaption, onShowDate, onAgain, onSetup, onGallery }: Props) {
+export function Collected({
+  strip,
+  machine,
+  decorations,
+  onDecorations,
+  onCaption,
+  onShowDate,
+  onAgain,
+  onSetup,
+  onGallery,
+  clips,
+  filter,
+  seed,
+  occasion,
+}: Props) {
   const [canShare, setCanShare] = useState(false);
   const [error, setError] = useState("");
   const [tool, setTool] = useState<Tool>("stickers");
   const [penColor, setPenColor] = useState(machine.pens[0]);
-  // Sticker sheet: this machine's by default; any machine's sheet, or all of them, to mix.
-  const [sheet, setSheet] = useState<string>(machine.id);
+  // Sticker sheet: the occasion's (if any) or this machine's by default; any sheet, or all of them, to mix.
+  const [sheet, setSheet] = useState<string>(occasion ? `occasion:${occasion.id}` : machine.id);
   const sheetStickers =
     sheet === "all"
-      ? MACHINES.flatMap((m) => m.stickers).filter((k, i, all) => all.indexOf(k) === i)
-      : (MACHINES.find((m) => m.id === sheet) ?? machine).stickers;
+      ? [...MACHINES.flatMap((m) => m.stickers), ...(occasion?.stickers ?? [])].filter((k, i, all) => all.indexOf(k) === i)
+      : occasion && sheet === `occasion:${occasion.id}`
+        ? occasion.stickers
+        : (MACHINES.find((m) => m.id === sheet) ?? machine).stickers;
+  const live = hasClips(clips);
+  const videoOk = canRecordVideo();
   // Pens: the machine's colors first, then everyone else's.
   const pens = [...machine.pens, ...MACHINES.flatMap((m) => m.pens)].filter((c, i, all) => all.indexOf(c) === i);
   const [penThick, setPenThick] = useState(false);
@@ -48,7 +77,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
-  const [keeping, setKeeping] = useState<"pin" | "print" | "gif" | null>(null);
+  const [keeping, setKeeping] = useState<KeepKind | null>(null);
   const [keepMsg, setKeepMsg] = useState("");
 
   useEffect(() => {
@@ -129,7 +158,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
     return canvasToBlob(await renderFinal());
   }
 
-  async function keep(kind: "pin" | "print" | "gif") {
+  async function keep(kind: KeepKind) {
     setKeeping(kind);
     setKeepMsg("");
     // Let the button show its busy state before the heavy work starts.
@@ -146,6 +175,13 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
       } else if (kind === "print") {
         downloadBlob(await printSheet(await renderFinal()), `${fileStamp()}-print-4x6.png`);
         setKeepMsg("Print it as a 4×6 photo. Strips come two to a sheet: cut down the dotted line.");
+      } else if (kind === "live") {
+        const { blob, ext } = await renderLiveVideo({ strip: { ...strip, decorations }, clips, filter, seed });
+        downloadBlob(blob, `${fileStamp()}-live.${ext}`);
+        setKeepMsg("Live strip saved. Every photo moves.");
+      } else if (kind === "boomerang") {
+        downloadBlob(await renderBoomerangGif({ strip: { ...strip, decorations }, clips, filter, seed }), `${fileStamp()}-boomerang.gif`);
+        setKeepMsg("Boomerang saved.");
       } else {
         const shots = strip.shots.filter((s): s is HTMLCanvasElement => s !== null);
         downloadBlob(await makeFlipbook(shots, strip.paper, strip.style, strip.caption, strip.fonts), `${fileStamp()}-flipbook.gif`);
@@ -256,7 +292,11 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
         {tool === "stickers" ? (
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Sticker sheet">
-              {[...MACHINES.map((m) => ({ id: m.id, text: m.year })), { id: "all", text: "All" }].map((t) => (
+              {[
+                ...(occasion ? [{ id: `occasion:${occasion.id}`, text: occasion.name }] : []),
+                ...MACHINES.map((m) => ({ id: m.id, text: m.year })),
+                { id: "all", text: "All" },
+              ].map((t) => (
                 <button
                   key={t.id}
                   type="button"
@@ -267,7 +307,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
                     sheet === t.id ? "border-ink bg-ink text-card" : "border-line bg-card/70 hover:border-ink/40"
                   }`}
                 >
-                  {t.id === "all" ? "All sheets" : <span className="font-display italic">{t.text}</span>}
+                  {t.id === "all" ? "All sheets" : t.id.startsWith("occasion:") ? t.text : <span className="font-display italic">{t.text}</span>}
                 </button>
               ))}
             </div>
@@ -391,6 +431,15 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
           )}
         </div>
 
+        <PostFormats
+          renderFinal={renderFinal}
+          version={JSON.stringify([strip.caption, strip.showDate, strip.paper.id, strip.layout.id, strip.style, decorations.stickers.length, decorations.strokes.length, JSON.stringify(decorations).length])}
+          machine={machine}
+          paper={strip.paper}
+          fonts={strip.fonts}
+          canShare={canShare}
+        />
+
         <div>
           <span className={label}>Keep it</span>
           <div className="grid grid-cols-3 gap-2">
@@ -399,6 +448,8 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
                 ["pin", pinnedId ? "Update pin" : "Pin to wall", "Save to the wall on this device"],
                 ["print", "Print 4×6", "A print-ready photo sheet at 300 dpi"],
                 ["gif", "Flipbook GIF", "Your photos as a looping animation"],
+                ...(live && videoOk ? ([["live", "Live strip", "A video where every photo moves"]] as const) : []),
+                ...(live ? ([["boomerang", "Boomerang", "A looping back-and-forth GIF of the strip"]] as const) : []),
               ] as const
             ).map(([kind, text, title]) => (
               <button

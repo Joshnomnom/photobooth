@@ -1,5 +1,6 @@
 import type { Filter, LookParams } from "./filters";
 import { DEFAULT_MACHINE, LOOKS, type Machine, machineById, PAPERS, paperById, type StripStyle } from "./machines";
+import { OCCASIONS, occasionById, promptsFor, type Together } from "./occasions";
 import type { SoundProfile } from "./sound";
 import { LAYOUTS, layoutById } from "./strip";
 
@@ -19,6 +20,10 @@ export type Settings = {
   /** Film: one press shoots the whole strip, no retakes. Digital: one shot per press, retakes allowed. */
   mode: Mode;
   mirror: boolean;
+  /** Occasion theme ("none" or an id from lib/occasions.ts). */
+  occasion: string;
+  /** Who's in the booth: picks the pose-prompt set. */
+  together: Together;
   // ── Mix & match ──
   lookId: Auto<string>;
   paperId: Auto<string>;
@@ -39,6 +44,8 @@ export const DEFAULT_SETTINGS: Settings = {
   timer: "3",
   mode: "film",
   mirror: true,
+  occasion: "none",
+  together: "solo",
   lookId: "auto",
   paperId: "auto",
   effects: "normal",
@@ -94,7 +101,10 @@ function scaleLook(filter: Filter, scale: number): Filter {
 export function resolve(settings: Settings) {
   const machine = machineById(settings.machineId);
   const look = settings.lookId === "auto" ? machine.filter : (LOOKS.find((l) => l.id === settings.lookId) ?? machine.filter);
-  const paper = (settings.paperId !== "auto" && paperById(settings.paperId)) || machine.papers[0];
+  const occasion = occasionById(settings.occasion);
+  // Paper: your pick, else the occasion's suggestion, else the machine's.
+  const paper =
+    (settings.paperId !== "auto" && paperById(settings.paperId)) || (occasion && paperById(occasion.paperId)) || machine.papers[0];
   const style: StripStyle = {
     ...machine.strip,
     photoRadius:
@@ -103,6 +113,7 @@ export function resolve(settings: Settings) {
     date: settings.date === "auto" ? machine.strip.date : settings.date,
     frame: settings.frame === "auto" ? machine.strip.frame : settings.frame,
     decorations: settings.decorations === "auto" ? machine.strip.decorations : settings.decorations,
+    defaultCaption: occasion?.caption ?? machine.strip.defaultCaption,
   };
   return {
     machine,
@@ -113,6 +124,8 @@ export function resolve(settings: Settings) {
     sound: settings.sound === "auto" ? machine.sound : settings.sound,
     countdown: Number(settings.timer),
     gapMs: PACE_MS[settings.pace],
+    occasion,
+    prompts: promptsFor(settings.together, occasion),
   };
 }
 
@@ -134,6 +147,8 @@ export function loadSettings(): Settings | null {
       layoutId: LAYOUTS.some((l) => l.id === s.layoutId) ? s.layoutId : DEFAULT_SETTINGS.layoutId,
       timer: oneOf(s.timer, ["0", "1", "3", "5", "10"] as const, "3"),
       mode: oneOf(s.mode, ["film", "digital"] as const, "film"),
+      occasion: s.occasion === "none" || OCCASIONS.some((o) => o.id === s.occasion) ? s.occasion : "none",
+      together: oneOf(s.together, ["solo", "couple", "friends"] as const, "solo"),
       lookId: s.lookId === "auto" || LOOKS.some((l) => l.id === s.lookId) ? s.lookId : "auto",
       paperId: s.paperId === "auto" || PAPERS.some((p) => p.id === s.paperId) ? s.paperId : "auto",
       effects: oneOf(s.effects, ["off", "low", "normal", "strong"] as const, "normal"),
@@ -160,15 +175,3 @@ export function saveSettings(settings: Settings) {
   }
 }
 
-export const POSE_PROMPTS = [
-  "Big smile!",
-  "Now look serious.",
-  "Silly face!",
-  "Look surprised!",
-  "Squeeze in close.",
-  "Strike a pose.",
-  "Look off into the distance.",
-  "Peace sign!",
-  "Laugh like you mean it.",
-  "Blow a kiss.",
-];

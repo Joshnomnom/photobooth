@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LOOKS, MACHINES, PAPERS } from "@/lib/machines";
+import { OCCASIONS, type Together } from "@/lib/occasions";
 import { type Effects, isMixed, MIX_DEFAULTS, type Pace, resolve, type Settings, type Timer, withMachine } from "@/lib/settings";
 import { preloadSounds } from "@/lib/sound";
 import { LAYOUTS, shotCount } from "@/lib/strip";
@@ -207,6 +208,22 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
             value={settings.timer}
             onChange={(v: Timer) => set("timer", v)}
             options={(["0", "1", "3", "5", "10"] as const).map((t) => ({ id: t, label: t === "0" ? "Off" : `${t}s` }))}
+          />
+          <OptionGroup
+            label="Occasion"
+            value={settings.occasion}
+            onChange={(v) => set("occasion", v)}
+            options={[{ id: "none", label: "None" }, ...OCCASIONS.map((o) => ({ id: o.id, label: o.name, title: `Caption "${o.caption}", themed stickers and prompts` }))]}
+          />
+          <OptionGroup
+            label="Who's in the booth"
+            value={settings.together}
+            onChange={(v: Together) => set("together", v)}
+            options={[
+              { id: "solo", label: "Just me" },
+              { id: "couple", label: "Two of us" },
+              { id: "friends", label: "The whole crew" },
+            ]}
           />
 
           {/* Mix & match: override anything the machine sets */}

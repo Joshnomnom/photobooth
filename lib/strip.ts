@@ -49,7 +49,7 @@ export type StripOptions = {
 let paperTile: HTMLCanvasElement | null = null;
 
 /** A small tile of light and dark specks that gives the strip a paper feel on any color. */
-function getPaperTile() {
+export function getPaperTile() {
   if (paperTile) return paperTile;
   const size = 160;
   const c = document.createElement("canvas");
@@ -77,7 +77,7 @@ function roundedPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
   else ctx.rect(x, y, w, h);
 }
 
-type Rect = { x: number; y: number; w: number; h: number };
+export type Rect = { x: number; y: number; w: number; h: number };
 
 /** Draws an image so it fills the box, cropping the middle (like CSS object-fit: cover). */
 export function drawCover(ctx: CanvasRenderingContext2D, img: CanvasImageSource & { width: number; height: number }, x: number, y: number, w: number, h: number) {
@@ -90,7 +90,7 @@ export function drawCover(ctx: CanvasRenderingContext2D, img: CanvasImageSource 
 }
 
 /** Path for one photo window: rectangle (optionally rounded) or oval. */
-function windowPath(ctx: CanvasRenderingContext2D, shape: "rect" | "oval", x: number, y: number, w: number, h: number, r: number) {
+export function windowPath(ctx: CanvasRenderingContext2D, shape: "rect" | "oval", x: number, y: number, w: number, h: number, r: number) {
   if (shape === "oval") {
     ctx.beginPath();
     ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
@@ -103,7 +103,10 @@ function windowPath(ctx: CanvasRenderingContext2D, shape: "rect" | "oval", x: nu
  * Draws the finished strip. The on-screen preview, the darkroom print and
  * the downloaded file all come from this function, so they always match.
  */
-export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
+/** Where the photo windows ended up, so live strips can animate exactly those areas. */
+export type StripGeometry = { windows: Rect[]; shape: "rect" | "oval"; radius: number };
+
+export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions): StripGeometry | undefined {
   const { layout, paper, style, shots, caption, showDate, fonts, undeveloped, seed } = opts;
   const frame = style.frame ?? "plain";
   const shape = style.photoShape ?? "rect";
@@ -148,6 +151,7 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
   if (receipt) drawReceiptHeader(ctx, width, pad + tooth, header, pad, paper.ink, fonts, seed, setSpacing);
 
   const photos: Rect[] = [];
+  const windows: Rect[] = [];
   for (let i = 0; i < shotCount(layout); i++) {
     const col = i % layout.cols;
     const row = Math.floor(i / layout.cols);
@@ -156,6 +160,7 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
     const px = x + matSide;
     const py = y + matSide;
     photos.push({ x, y, w: cellW, h: cellH });
+    windows.push({ x: px, y: py, w: photoW, h: photoH });
     const shot = shots[i];
 
     if (instant) {
@@ -253,6 +258,7 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
   }
 
   if (opts.decorations) drawDecorations(ctx, opts.decorations, fonts);
+  return { windows, shape, radius };
 }
 
 /** Receipt header: shop name, receipt number, dashed rule. */

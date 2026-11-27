@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (eight machines)_
+_Last updated: 2026-11-27 (Phase 7 built)_
 
 ## Vision
 
@@ -222,15 +222,19 @@ The street now runs chronologically: '1890 → '62 → '72 → '79 → '89 → '
 
 **Verified:** typecheck, lint; headless Chrome shoots a full strip on each new machine (countdown style, crop guide, dither/scanlines/torn-edge checks), plus rooms, mixed options and keepsakes regressions; no console errors.
 
-### Phase 7 · Outcomes: what people leave with ⏳ (proposed)
+### Phase 7 · Outcomes: what people leave with ✅
 
-Research: [07-user-outcomes](research/07-user-outcomes.md). The style is strong; the gaps are in sharing, motion and occasions.
+Research: [07-user-outcomes](research/07-user-outcomes.md). The style was strong; the gaps were sharing, motion and occasions.
 
-- [ ] **Ready-to-post formats** with previews: Instagram Story 9:16 (safe zones), feed post 4:5, phone wallpaper; strip on a room-styled background
-- [ ] **Live strip:** short clip per pose → animated strip (WebM/MP4) and a small boomerang GIF
-- [ ] **Occasions:** one-tap themes (Birthday, Date night, Besties, Graduation, Wedding, Holiday): caption, sticker pack, suggested paper; still mixable
-- [ ] **Together modes:** prompt sets for solo / couple / friends
-- [ ] Not doing (privacy): QR codes, cloud galleries, remote "booth with friends"
+- [x] **Ready-to-post formats** (`lib/formats.ts`, `components/PostFormats.tsx`): Story 1080×1920, Post 1080×1350, Wallpaper 1170×2532, each with a live preview of exactly what's saved; strip kept inside each safe zone (Story bars, lock-screen clock), slight tilt and shadow; backgrounds: rainy street (real bokeh), the machine's velvet (real curtain, recolored), or paper; Save or Share each
+- [x] **Live strip** (`lib/live.ts`): the booth grabs ~12 fps frames from 1 s before each shot to 0.45 s after (works in every browser, no video capture needed); frames are developed in the real film look, so motion matches the stills (grain, tone, dither, scanlines)
+  - Live strip video: each photo plays a boomerang in place, stickers stay on top; MP4 where supported, else WebM
+  - Boomerang GIF: whole strip, ~26 frames, ~1 MB
+- [x] **Occasions** (`lib/occasions.ts`): Birthday, Date night, Besties, Graduation, Wedding, Holiday. Each sets the default caption, a suggested paper (when Paper is on "Machine"), its own sticker sheet (opens first on the studio table) and themed prompts; 12 new stickers (cake, balloon, party hat, rose, rings, grad cap, snowflake, gift, themed words)
+- [x] **Together modes**: "Just me", "Two of us", "The whole crew" prompt sets, mixed with the occasion's prompts
+- [x] Not doing (privacy): QR codes, cloud galleries, remote "booth with friends"
+
+**Verified:** typecheck, lint, production build; headless Chrome: Birthday + couple prompts appear during the shoot; caption/stickers follow the occasion; previews render; Story/Post/Wallpaper save at exact sizes; live strip MP4 (528×1600) in ~7 s; boomerang GIF 26 frames, infinite loop, ~1.1 MB; rooms, mixed options and keepsakes regressions pass; no console errors.
 
 ### Explicitly out of scope
 
@@ -276,3 +280,4 @@ Research: [07-user-outcomes](research/07-user-outcomes.md). The style is strong;
 | 2026-11-27 | Machines become presets; every setting can be overridden ("Mix & match") | People want to combine freely; "Machine" defaults keep the one-tap experience |
 | 2026-11-27 | Live setup preview uses real vintage faces developed in the chosen look | Shows the look and the frame honestly before shooting, without needing the camera |
 | 2026-11-27 | Four more machines ('1890, '72, '89, '25); street in chronological order | Each adds a distinct outcome (oval portrait, instant cards, video freeze-frames, receipt) rather than another color filter |
+| 2026-11-27 | Live strips grab frames into canvases instead of recording video clips | Works the same in every browser (incl. Safari), and lets every frame get the real film look; MediaRecorder is only used to encode the final video |
