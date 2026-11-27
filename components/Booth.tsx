@@ -12,6 +12,7 @@ import { BoothInterior } from "./BoothInterior";
 import { Collected } from "./Collected";
 import { Outside } from "./Outside";
 import { PrintSlot } from "./PrintSlot";
+import { Wall } from "./Wall";
 
 /** outside → booth → printing → collected (decorate + save). See docs/PLAN.md. */
 type Stage = "outside" | "booth" | "printing" | "collected";
@@ -78,6 +79,7 @@ export function Booth() {
       {(stage === "outside" || stage === "booth") && (
         <Outside settings={settings} onChange={setSettings} onStart={enterBooth} />
       )}
+      {stage === "outside" && <Wall />}
       {stage === "booth" && (
         <BoothInterior settings={settings} shots={shots} seed={seed} onShot={onShot} onPrint={toPrinting} onExit={toOutside} />
       )}

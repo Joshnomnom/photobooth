@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { MACHINES } from "@/lib/machines";
 import { type Settings, type Timer, resolve, withMachine } from "@/lib/settings";
+import { preloadSounds } from "@/lib/sound";
 import { layoutById, shotCount } from "@/lib/strip";
 import { BoothCabinet } from "./BoothCabinet";
 import { MuteButton } from "./MuteButton";
@@ -34,6 +35,9 @@ export function Outside({ settings, onChange, onStart }: Props) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ left, behavior: smooth && !reduce ? "smooth" : "auto" });
   };
+
+  // Fetch sound files early so the first coin sound isn't late.
+  useEffect(() => preloadSounds(), []);
 
   // Start centered on the selected booth.
   const mounted = useRef(false);

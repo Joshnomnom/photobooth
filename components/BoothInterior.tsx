@@ -85,7 +85,6 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
         if (slot === -1) break;
         setPosing(slot);
         const count = first ? Number(settings.timer) : Math.min(3, Number(settings.timer));
-        if (profile === "plastic") play("charge");
         for (let n = count; n > 0; n--) {
           setCountdown(n);
           play("tick", { profile });

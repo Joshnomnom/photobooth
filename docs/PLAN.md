@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (Phase 3 built, sounds redesigned)_
+_Last updated: 2026-11-27 (Phase 4 built, recorded sounds)_
 
 ## Vision
 
@@ -150,17 +150,32 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 - [x] New designs: two-note bell chime on Start, soft double click + low thump shutter (heavier on '62, arpeggio on '98, click + ratchet on '04), smooth motor hum in four pushes synced to the print animation, soft paper tap on drop
 - [x] Removed the curtain swish; '04 flash whine made much quieter
 - [x] Added: sticker "pop", "ready" chime when the strip finishes developing, time's-up chime
-- [ ] Listen and tune on real speakers/phones. If synthesis still feels fake, switch to short CC0 recordings
+- [x] Synthesis still wasn't good enough → switched to real CC0 recordings (Phase 4 session), see below
 
-### Phase 4 · Keepsakes 💤
+### Sound: real recordings (done with Phase 4)
+
+- [x] All effects except the countdown tick are now CC0 recordings in `public/sounds/` (~520 KB total, credits in `public/sounds/CREDITS.txt`)
+  - Shutter: real SLR "ka-chunk" ('79, and pitched down for '62), lighter shutter + glass sparkle ('98), point-and-shoot with film advance motor ('04)
+  - Start: a coin landing; print: a small motor (fidget-spinner recording pitched down) in four pushes plus a paper slide; drop: a card being placed
+  - Ready, sticker pop, time's up: Kenney interface chimes
+- [x] Files are fetched when the booth page loads and decoded on the Start press, so the first sound isn't late
+- [x] Processing (trim, mono, normalize, pitch) done once offline in headless Chrome; scripts kept out of the repo
+- [ ] Listen on real speakers and phones; swap any file that grates
+
+### Phase 4 · Keepsakes ✅
 
 **Goal: strips have an afterlife.**
 
-- [ ] Scrapbook wall: finished strips pinned to a board, stored in IndexedDB on this device only
-- [ ] Re-download / delete from the wall
-- [ ] Print-ready export (2×6 in at 300 dpi; a double strip on 4×6 for home photo printers)
-- [ ] Animated export: the shots as a looping GIF/WebM "flipbook"
-- [ ] Seasonal limited frames (a reason to come back)
+- [x] Scrapbook wall: "Pin to wall" saves the finished strip (decorations included) as a JPEG in IndexedDB, in this browser only (`lib/scrapbook.ts`). Re-pinning after more edits updates the same pin
+- [x] The wall: a corkboard under the booths with each strip taped at a slight tilt; hidden until there's a pin (`components/Wall.tsx`)
+- [x] Open a pinned strip: download it, print-ready 4×6, or remove it (with confirmation)
+- [x] Print-ready export: 4×6 in at 300 dpi (1200×1800). Strips print two-up with a dotted cut line, like real booth prints; grids print one-up. PNG carries a 300 dpi pHYs chunk (`lib/printSheet.ts`)
+- [x] Flipbook GIF: each photo framed on the machine's paper with caption and frame counter, looping forever. Own encoder: median-cut palette, Floyd–Steinberg dithering, LZW (`lib/gif.ts`, `lib/flipbook.ts`)
+- [x] Header copy changed from "Nothing stored" to "Stays on your device", since pins are now stored locally (opt-in)
+- [ ] Seasonal limited frames (later: needs a content plan)
+- [ ] Flipbook from wall items (would need to store the individual shots too)
+
+**Verified:** typecheck, lint; headless Chrome: pin → wall shows it; print sheet is 1200×1800 with a 300 dpi chunk; GIF decodes as 4 frames, infinite loop, ~0.2 s to build; wall dialog print and remove work; no console errors.
 
 ### Explicitly out of scope
 
@@ -197,3 +212,6 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 | 2026-11-27 | Disposable date stamp drawn as real seven-segment digits, not a font | No suitable font on Google Fonts; drawing it keeps the look exact on canvas and in the countdown |
 | 2026-11-27 | Decorate on the collected screen instead of a separate stage | Keeps "download right away" one click away while making decorating the obvious next thing |
 | 2026-11-27 | Rebuilt all sounds from clean tones through one soft bus | Feedback: only the (clean, tonal) countdown tick sounded good; noise and sawtooth sounds read as harsh |
+| 2026-11-27 | Sounds switched to CC0 recordings (Kenney, OpenGameArt) | Synthesized effects were rated awful; only the tick survives as synth |
+| 2026-11-27 | The wall is opt-in ("Pin to wall") and local-only | Keeps the privacy promise: nothing is stored unless the visitor asks, and never off the device |
+| 2026-11-27 | Own GIF encoder instead of a dependency | ~250 lines, no bundle weight from a library, full control of the palette and dithering |

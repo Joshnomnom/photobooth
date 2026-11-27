@@ -32,6 +32,7 @@ The session moves through four stages: **outside → booth → printing → coll
 | `components/PrintSlot.tsx` | Strip prints out of the slot and develops |
 | `components/Collected.tsx` | Decorate (stickers, pen, undo, timer), caption, download, share, go again |
 | `components/StripEditor.tsx` | Editable strip canvas: drag, turn/resize handle, pen, keyboard |
+| `components/Wall.tsx` | Scrapbook wall of pinned strips (corkboard + detail dialog) |
 | `components/CameraBlocked.tsx` | "Booth closed" screen with per-browser steps |
 | `lib/look.ts` | Film look pipeline applied at capture (drift, color, vignette, halation, grain) |
 | `lib/machines.ts` | The machines ('62, '79, '98, '04): look, papers, strip style, sounds, colors |
@@ -40,11 +41,14 @@ The session moves through four stages: **outside → booth → printing → coll
 | `lib/decorations.ts` | Placed stickers + pen strokes model and drawing |
 | `lib/sevenSeg.ts` | Seven-segment digits for the date stamp and LCD countdown |
 | `lib/strip.ts` | Layouts and strip rendering: corners, captions, decorations, date stamp (preview, print and download all use it) |
-| `lib/sound.ts` | Synthesized Web Audio sounds with per-machine profiles + mute state |
+| `lib/sound.ts` | Plays the CC0 recordings in `public/sounds/` per machine, plus the synthesized tick; mute state |
+| `lib/scrapbook.ts` | IndexedDB storage for the wall (this browser only) |
+| `lib/printSheet.ts` | 4×6 in, 300 dpi print sheet (two strips per sheet) |
+| `lib/gif.ts`, `lib/flipbook.ts` | Animated GIF encoder and the flipbook frames |
 | `lib/useCamera.ts` | Camera lifecycle, device switching, error types |
 | `lib/settings.ts` | Setup options, defaults, pose prompts |
 
-Plans and research live in [docs/](docs/README.md).
+Plans and research live in [docs/](docs/README.md). Sound credits: [public/sounds/CREDITS.txt](public/sounds/CREDITS.txt).
 
 ## Deploy
 

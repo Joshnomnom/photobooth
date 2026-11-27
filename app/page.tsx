@@ -11,7 +11,7 @@ export default function Home() {
           <p className="mt-1 text-sm text-muted">A photo booth that lives in your browser.</p>
         </div>
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
-          No uploads · No account · Nothing stored
+          No uploads · No account · Stays on your device
         </p>
       </header>
 

@@ -1,0 +1,23 @@
+Sound effects used by The Snap Room
+
+All files here are derived from public-domain (CC0 1.0) recordings:
+https://creativecommons.org/publicdomain/zero/1.0/
+They were trimmed, mixed to mono, normalized, and (motor.wav) pitched down.
+
+shutter-slr.wav, shutter-light.wav, coin.wav, motor.wav
+  From "202 More Sound Effects" (Camera_01, Camera_02, Money_32, Fidget_Spinner2), CC0
+  https://opengameart.org/content/202-more-sound-effects
+
+shutter-compact.wav
+  From "Camera shutter" (photo.ogg), CC0
+  https://opengameart.org/node/73696
+
+paper-slide.wav, paper-place.wav
+  From Kenney "Casino Audio" (card-slide-3, card-place-1), CC0
+  https://kenney.nl/assets/casino-audio
+
+ready.wav, pop.wav, timeup.wav, sparkle.wav
+  From Kenney "Interface Sounds" (confirmation_001, drop_002, question_001, glass_002), CC0
+  https://kenney.nl/assets/interface-sounds
+
+Credit isn't required by CC0, but thank you to Kenney and the OpenGameArt contributors.

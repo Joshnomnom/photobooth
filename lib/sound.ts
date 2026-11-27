@@ -1,30 +1,45 @@
 "use client";
 
 /**
- * Synthesized booth sounds (Web Audio, no sample files).
+ * Booth sounds: real CC0 recordings (see public/sounds/CREDITS.txt), plus the
+ * synthesized countdown tick, which is the one synth sound that worked well.
  *
- * Design rule (after the first kit was too harsh): build everything from clean,
- * short tones like the countdown tick. Noise is used only in tiny, filtered
- * amounts. Every sound goes through one bus: high-cut → gentle compressor →
- * a touch of room reverb, so they sit together instead of poking out.
- *
- * Audio must be unlocked inside a click/tap handler; see docs/research/04-technical.md#web-audio.
+ * Files are fetched early (preloadSounds) and decoded when audio is unlocked,
+ * which must happen inside a click/tap handler (unlockAudio).
+ * See docs/research/04-technical.md#web-audio.
  */
 
 import { useSyncExternalStore } from "react";
 
-export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "charge" | "pop" | "ready" | "timeup";
+export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "pop" | "ready" | "timeup";
 
 /** Each machine has its own voice. See lib/machines.ts. */
 export type SoundProfile = "mechanical" | "classic" | "cute" | "plastic";
 
+const FILES = [
+  "coin",
+  "shutter-slr",
+  "shutter-light",
+  "shutter-compact",
+  "sparkle",
+  "motor",
+  "paper-slide",
+  "paper-place",
+  "ready",
+  "pop",
+  "timeup",
+] as const;
+type FileName = (typeof FILES)[number];
+
 const KEY = "snaproom:muted";
 let ctx: AudioContext | null = null;
 let bus: AudioNode | null = null;
-let noise: AudioBuffer | null = null;
 let muted = false;
 let loaded = false;
 const listeners = new Set<() => void>();
+const raw = new Map<FileName, Promise<ArrayBuffer | null>>();
+const buffers = new Map<FileName, AudioBuffer>();
+let decoding: Promise<void> | null = null;
 
 function load() {
   if (loaded) return;
@@ -60,42 +75,34 @@ export function useMuted() {
   return useSyncExternalStore(subscribe, isMuted, () => false);
 }
 
-/** A short, dark room impulse: decaying stereo noise, smoothed. */
-function roomImpulse(c: AudioContext) {
-  const len = Math.floor(c.sampleRate * 0.7);
-  const ir = c.createBuffer(2, len, c.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = ir.getChannelData(ch);
-    let prev = 0;
-    for (let i = 0; i < len; i++) {
-      const t = i / len;
-      const n = (Math.random() * 2 - 1) * (1 - t) ** 3;
-      prev = prev * 0.6 + n * 0.4; // simple low-pass so the tail isn't hissy
-      d[i] = prev;
-    }
+/** Start downloading the sound files (no decoding yet). Safe to call repeatedly. */
+export function preloadSounds() {
+  if (raw.size) return;
+  for (const f of FILES) {
+    raw.set(
+      f,
+      fetch(`/sounds/${f}.wav`)
+        .then((r) => (r.ok ? r.arrayBuffer() : null))
+        .catch(() => null),
+    );
   }
-  return ir;
 }
 
-function buildBus(c: AudioContext) {
-  const input = c.createGain();
-  input.gain.value = 0.8;
-  const hiCut = c.createBiquadFilter();
-  hiCut.type = "lowpass";
-  hiCut.frequency.value = 7500;
-  const comp = c.createDynamicsCompressor();
-  comp.threshold.value = -20;
-  comp.ratio.value = 3;
-  comp.attack.value = 0.003;
-  comp.release.value = 0.15;
-  input.connect(hiCut).connect(comp).connect(c.destination);
-
-  const verb = c.createConvolver();
-  verb.buffer = roomImpulse(c);
-  const wet = c.createGain();
-  wet.gain.value = 0.14;
-  comp.connect(verb).connect(wet).connect(c.destination);
-  return input;
+function decodeAll(c: AudioContext) {
+  if (decoding) return decoding;
+  preloadSounds();
+  decoding = Promise.all(
+    FILES.map(async (f) => {
+      const data = await raw.get(f);
+      if (!data) return;
+      try {
+        buffers.set(f, await c.decodeAudioData(data.slice(0)));
+      } catch {
+        /* skip a file that won't decode */
+      }
+    }),
+  ).then(() => undefined);
+  return decoding;
 }
 
 /** Call synchronously from a click/tap handler. */
@@ -105,7 +112,14 @@ export function unlockAudio() {
       const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
       ctx = new AC();
-      bus = buildBus(ctx);
+      // A gentle compressor keeps loud and quiet recordings at a similar level.
+      const input = ctx.createGain();
+      input.gain.value = 0.9;
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16;
+      comp.ratio.value = 2.5;
+      input.connect(comp).connect(ctx.destination);
+      bus = input;
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") ctx?.resume().catch(() => {});
       });
@@ -116,93 +130,51 @@ export function unlockAudio() {
     src.buffer = ctx.createBuffer(1, 1, 22050);
     src.connect(ctx.destination);
     src.start(0);
+    decodeAll(ctx);
   } catch {
     ctx = null;
     bus = null;
   }
 }
 
-function noiseBuffer(c: AudioContext) {
-  if (!noise) {
-    noise = c.createBuffer(1, c.sampleRate, c.sampleRate);
-    const data = noise.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+type SampleOpts = { gain?: number; rate?: number; offset?: number; duration?: number; fade?: number };
+
+/** Plays a decoded recording at time `at`. Returns false if it isn't loaded yet. */
+function sample(name: FileName, at: number, opts: SampleOpts = {}) {
+  const b = buffers.get(name);
+  if (!ctx || !bus || !b) return false;
+  const src = ctx.createBufferSource();
+  src.buffer = b;
+  src.playbackRate.value = opts.rate ?? 1;
+  const g = ctx.createGain();
+  const level = opts.gain ?? 1;
+  const fade = opts.fade ?? 0;
+  if (fade && opts.duration) {
+    const end = at + opts.duration / (opts.rate ?? 1);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(level, at + fade);
+    g.gain.setValueAtTime(level, Math.max(at + fade, end - fade));
+    g.gain.exponentialRampToValueAtTime(0.0001, end);
+  } else {
+    g.gain.value = level;
   }
-  return noise;
+  src.connect(g).connect(bus);
+  src.start(at, opts.offset ?? 0, opts.duration);
+  return true;
 }
 
-type ToneOpts = { type?: OscillatorType; to?: number; attack?: number };
-
-/** A clean enveloped tone. The building block for almost everything. */
-function tone(c: AudioContext, out: AudioNode, start: number, dur: number, freq: number, gain: number, opts: ToneOpts = {}) {
+/** The synthesized countdown tick (kept from the first kit; it tested well). */
+function tick(c: AudioContext, out: AudioNode, at: number, freq: number, glide: boolean) {
   const osc = c.createOscillator();
   const g = c.createGain();
-  osc.type = opts.type ?? "sine";
-  osc.frequency.setValueAtTime(freq, start);
-  if (opts.to) osc.frequency.exponentialRampToValueAtTime(opts.to, start + dur);
-  const attack = opts.attack ?? 0.004;
-  g.gain.setValueAtTime(0.0001, start);
-  g.gain.exponentialRampToValueAtTime(gain, start + attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  osc.frequency.setValueAtTime(freq, at);
+  if (glide) osc.frequency.exponentialRampToValueAtTime(freq * 1.25, at + 0.07);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(0.1, at + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
   osc.connect(g).connect(out);
-  osc.start(start);
-  osc.stop(start + dur + 0.02);
-}
-
-/** A tiny touch of band-limited noise, for texture only. */
-function grit(c: AudioContext, out: AudioNode, start: number, dur: number, freq: number, gain: number, q = 2) {
-  const src = c.createBufferSource();
-  src.buffer = noiseBuffer(c);
-  const f = c.createBiquadFilter();
-  f.type = "bandpass";
-  f.frequency.value = freq;
-  f.Q.value = q;
-  const g = c.createGain();
-  g.gain.setValueAtTime(0.0001, start);
-  g.gain.exponentialRampToValueAtTime(gain, start + 0.003);
-  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  src.connect(f).connect(g).connect(out);
-  src.start(start, Math.random() * 0.5);
-  src.stop(start + dur + 0.02);
-}
-
-/** A soft bell: fundamental plus two inharmonic partials. */
-function bell(c: AudioContext, out: AudioNode, start: number, freq: number, gain: number, decay = 0.8) {
-  tone(c, out, start, decay, freq, gain, { attack: 0.006 });
-  tone(c, out, start, decay * 0.5, freq * 2.76, gain * 0.25, { attack: 0.004 });
-  tone(c, out, start, decay * 0.25, freq * 5.4, gain * 0.08, { attack: 0.003 });
-}
-
-/** A crisp, quiet mechanical click. */
-function click(c: AudioContext, out: AudioNode, start: number, gain = 1) {
-  tone(c, out, start, 0.012, 1900, 0.09 * gain, { attack: 0.001 });
-  grit(c, out, start, 0.02, 2600, 0.04 * gain, 3);
-}
-
-/** One push of the print motor: a smooth low hum with a gentle flutter. */
-function motorPush(c: AudioContext, out: AudioNode, start: number, dur: number, freq: number, level: number) {
-  const osc = c.createOscillator();
-  osc.frequency.value = freq;
-  const lp = c.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 420;
-  const g = c.createGain();
-  g.gain.setValueAtTime(0.0001, start);
-  g.gain.exponentialRampToValueAtTime(level, start + 0.04);
-  g.gain.setValueAtTime(level, Math.max(start + 0.05, start + dur - 0.07));
-  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  const lfo = c.createOscillator();
-  lfo.frequency.value = 26;
-  const depth = c.createGain();
-  depth.gain.value = level * 0.35;
-  lfo.connect(depth).connect(g.gain);
-  osc.connect(lp).connect(g).connect(out);
-  osc.start(start);
-  lfo.start(start);
-  osc.stop(start + dur + 0.05);
-  lfo.stop(start + dur + 0.05);
-  // Faint gear ticks over the hum.
-  for (let t = start + 0.05; t < start + dur - 0.05; t += 1 / 12) tone(c, out, t, 0.006, 1300, 0.012, { attack: 0.001 });
+  osc.start(at);
+  osc.stop(at + 0.09);
 }
 
 /** Matches the stepped @keyframes print-out in globals.css. */
@@ -213,75 +185,63 @@ const PRINT_PUSHES: [number, number][] = [
   [0.8, 1],
 ];
 
+const MOTOR_RATE: Record<SoundProfile, number> = { mechanical: 0.8, classic: 1, cute: 1.25, plastic: 1.1 };
+
 export function play(name: SoundName, opts: { profile?: SoundProfile; duration?: number } = {}) {
   if (!ctx || !bus || isMuted()) return;
   if (ctx.state !== "running") ctx.resume().catch(() => {});
   const c = ctx;
-  const out = bus;
   const t = c.currentTime + 0.01;
   const profile = opts.profile ?? "classic";
-  const duration = opts.duration ?? 3;
 
-  switch (name) {
-    case "tick": {
-      // The one everybody liked. Profiles only shift the pitch.
-      const f = profile === "mechanical" ? 1050 : profile === "cute" ? 1600 : profile === "plastic" ? 1900 : 1320;
-      tone(c, out, t, 0.07, f, 0.1, profile === "cute" ? { to: f * 1.25 } : {});
-      break;
-    }
-    case "coin":
-      // Two-note welcome chime, then the coin landing.
-      bell(c, out, t, 1568, 0.07, 0.7);
-      bell(c, out, t + 0.12, 2093, 0.06, 0.9);
-      tone(c, out, t + 0.24, 0.09, 140, 0.08, { to: 80 });
-      break;
-    case "shutter":
-      if (profile === "cute") {
-        // Sparkly arpeggio instead of a mechanism.
-        [1047, 1319, 1568, 2093].forEach((f, i) => bell(c, out, t + i * 0.05, f, 0.05, 0.35));
-      } else if (profile === "plastic") {
-        click(c, out, t, 0.9);
-        // Film-advance thumbwheel: soft ratchet ticks.
-        for (let i = 0; i < 6; i++) tone(c, out, t + 0.3 + i * 0.045, 0.006, 2800, 0.03, { attack: 0.001 });
-      } else {
-        const heavy = profile === "mechanical";
-        click(c, out, t);
-        tone(c, out, t, heavy ? 0.09 : 0.06, heavy ? 115 : 145, heavy ? 0.16 : 0.11, { to: heavy ? 55 : 70 });
-        click(c, out, t + (heavy ? 0.09 : 0.055), 0.8);
+  if (name === "tick") {
+    const f = profile === "mechanical" ? 1050 : profile === "cute" ? 1600 : profile === "plastic" ? 1900 : 1320;
+    tick(c, bus, t, f, profile === "cute");
+    return;
+  }
+
+  // Recordings may still be decoding right after the Start press; play once ready if it's quick.
+  const requested = performance.now();
+  const fire = (at: number) => {
+    switch (name) {
+      case "coin":
+        return sample("coin", at, { gain: 0.9 });
+      case "shutter":
+        if (profile === "plastic") return sample("shutter-compact", at);
+        if (profile === "cute") {
+          const ok = sample("shutter-light", at, { rate: 1.08 });
+          sample("sparkle", at + 0.06, { gain: 0.7 });
+          return ok;
+        }
+        return sample("shutter-slr", at, profile === "mechanical" ? { rate: 0.85 } : {});
+      case "whirr": {
+        const motor = buffers.get("motor");
+        if (!motor) return false;
+        const duration = opts.duration ?? 3;
+        const rate = MOTOR_RATE[profile];
+        for (const [a, b] of PRINT_PUSHES) {
+          const len = (b - a) * duration * rate; // source seconds for this push
+          const offset = Math.random() * Math.max(0, motor.duration - len);
+          sample("motor", at + a * duration, { rate, offset, duration: len, gain: 0.55, fade: 0.04 });
+          sample("paper-slide", at + a * duration + 0.05, { gain: 0.25, rate: 0.9 });
+        }
+        return true;
       }
-      break;
-    case "whirr": {
-      const freq = profile === "mechanical" ? 68 : profile === "cute" ? 140 : profile === "plastic" ? 110 : 88;
-      const level = profile === "cute" ? 0.035 : 0.055;
-      for (const [a, b] of PRINT_PUSHES) motorPush(c, out, t + a * duration, (b - a) * duration, freq, level);
-      if (profile === "cute") {
-        bell(c, out, t + duration, 2637, 0.04, 0.5);
-        bell(c, out, t + duration + 0.1, 3136, 0.035, 0.6);
-      }
-      break;
+      case "drop":
+        return sample("paper-place", at, { gain: 0.8 });
+      case "pop":
+        return sample("pop", at, { gain: 0.8 });
+      case "ready":
+        return sample("ready", at, { gain: 0.7 });
+      case "timeup":
+        return sample("timeup", at, { gain: 0.7 });
     }
-    case "drop":
-      tone(c, out, t, 0.05, 260, 0.07, { to: 140 });
-      grit(c, out, t, 0.03, 1200, 0.02, 1);
-      break;
-    case "charge":
-      // Disposable flash charging: kept very quiet on purpose.
-      tone(c, out, t, 1.2, 700, 0.01, { to: 2200, attack: 0.2 });
-      break;
-    case "pop":
-      // Sticker placed.
-      tone(c, out, t, 0.06, 520, 0.07, { to: 900 });
-      tone(c, out, t + 0.02, 0.04, 1400, 0.02);
-      break;
-    case "ready":
-      // Strip developed.
-      bell(c, out, t, 1319, 0.05, 0.8);
-      bell(c, out, t + 0.1, 1760, 0.05, 1);
-      break;
-    case "timeup":
-      bell(c, out, t, 1047, 0.06, 0.6);
-      bell(c, out, t + 0.16, 784, 0.06, 0.9);
-      break;
+  };
+
+  if (!fire(t) && decoding) {
+    decoding.then(() => {
+      if (ctx && performance.now() - requested < 600) fire(ctx.currentTime + 0.01);
+    });
   }
 }
 

@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Decorations, EMPTY_DECORATIONS, isEmpty, placeSticker } from "@/lib/decorations";
+import { downloadBlob, fileStamp } from "@/lib/download";
+import { makeFlipbook } from "@/lib/flipbook";
 import type { Fonts } from "@/lib/fonts";
 import type { Machine } from "@/lib/machines";
+import { printSheet } from "@/lib/printSheet";
+import { pinStrip } from "@/lib/scrapbook";
 import { play } from "@/lib/sound";
 import { drawSticker, type StickerKind, stickerLabel } from "@/lib/stickers";
 import { canvasToBlob, drawStrip, type StripOptions, stripFilename } from "@/lib/strip";
@@ -34,6 +38,9 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
   const [size, setSize] = useState({ width: 1000, height: 3000 });
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [keeping, setKeeping] = useState<"pin" | "print" | "gif" | null>(null);
+  const [keepMsg, setKeepMsg] = useState("");
 
   useEffect(() => {
     const probe = new File([], "x.png", { type: "image/png" });
@@ -101,11 +108,45 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
   const strokeWidth = Math.round(size.width * (penThick ? 0.018 : 0.008));
   const pen: Pen = { color: penColor, width: strokeWidth, halo: machine.penHalo };
 
-  async function exportStrip() {
-    const canvas = document.createElement("canvas");
+  /** The finished strip, decorations included, at full resolution. */
+  async function renderFinal() {
     await document.fonts?.ready;
+    const canvas = document.createElement("canvas");
     drawStrip(canvas, { ...strip, decorations });
-    return canvasToBlob(canvas);
+    return canvas;
+  }
+
+  async function exportStrip() {
+    return canvasToBlob(await renderFinal());
+  }
+
+  async function keep(kind: "pin" | "print" | "gif") {
+    setKeeping(kind);
+    setKeepMsg("");
+    // Let the button show its busy state before the heavy work starts.
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      if (kind === "pin") {
+        const c = await renderFinal();
+        const blob = await new Promise<Blob>((resolve, reject) =>
+          c.toBlob((b) => (b ? resolve(b) : reject(new Error("export"))), "image/jpeg", 0.9),
+        );
+        const data = { machineId: machine.id, layoutId: strip.layout.id, caption: strip.caption, width: c.width, height: c.height, blob };
+        setPinnedId(await pinStrip(data, pinnedId ?? undefined));
+        setKeepMsg(pinnedId ? "Updated on your wall." : "Pinned to your wall. Find it on the booth page.");
+      } else if (kind === "print") {
+        downloadBlob(await printSheet(await renderFinal()), `${fileStamp()}-print-4x6.png`);
+        setKeepMsg("Print it as a 4×6 photo. Strips come two to a sheet: cut down the dotted line.");
+      } else {
+        const shots = strip.shots.filter((s): s is HTMLCanvasElement => s !== null);
+        downloadBlob(await makeFlipbook(shots, strip.paper, strip.style, strip.caption, strip.fonts), `${fileStamp()}-flipbook.gif`);
+        setKeepMsg("Flipbook saved. It loops forever.");
+      }
+    } catch {
+      setKeepMsg(kind === "pin" ? "Couldn't save to your wall in this browser." : "Something went wrong. Please try again.");
+    } finally {
+      setKeeping(null);
+    }
   }
 
   async function download() {
@@ -323,6 +364,33 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
           )}
         </div>
 
+        <div>
+          <span className={label}>Keep it</span>
+          <div className="grid grid-cols-3 gap-2">
+            {(
+              [
+                ["pin", pinnedId ? "Update pin" : "Pin to wall", "Save to the wall on this device"],
+                ["print", "Print 4×6", "A print-ready photo sheet at 300 dpi"],
+                ["gif", "Flipbook GIF", "Your photos as a looping animation"],
+              ] as const
+            ).map(([kind, text, title]) => (
+              <button
+                key={kind}
+                type="button"
+                title={title}
+                onClick={() => keep(kind)}
+                disabled={keeping !== null}
+                className="h-12 rounded-xl border border-line bg-card px-2 text-xs font-semibold leading-tight transition hover:border-ink/40 disabled:opacity-50"
+              >
+                {keeping === kind ? "Working…" : text}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 min-h-4 text-xs text-muted" aria-live="polite">
+            {keepMsg}
+          </p>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 text-sm">
           <button type="button" onClick={onAgain} className="h-10 rounded-full bg-ink px-5 font-semibold text-card hover:bg-ink/85">
             Take another
@@ -331,7 +399,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
             Change setup
           </button>
         </div>
-        <p className="text-xs text-muted">Download before you leave. Nothing is saved on our side.</p>
+        <p className="text-xs text-muted">Nothing is uploaded. Download it, or pin it to the wall saved in this browser.</p>
       </section>
     </div>
   );
