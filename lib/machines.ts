@@ -30,17 +30,21 @@ export type StripStyle = {
   captionScale: number;
   /** Outline around the caption (sticker style), or null. */
   captionOutline: string | null;
-  /** Where the date goes: under the caption, or burned into each photo like a disposable. */
-  date: "footer" | "stamp";
+  /** Where the date goes: under the caption, burned in like a disposable, or a VHS on-screen display. */
+  date: "footer" | "stamp" | "vhs";
   dateFont: FontKey;
   /** Paper decorations drawn around the photos. */
   decorations: "none" | "sparkles";
   /** Footer height relative to the photo width. */
   footer: number;
   defaultCaption: string;
+  /** How each photo is framed: plain, on its own instant-print card (square), a receipt, or an ornate double rule. */
+  frame?: "plain" | "instant" | "receipt" | "ornate";
+  /** Photo window shape. */
+  photoShape?: "rect" | "oval";
 };
 
-export type CountdownStyle = "stencil" | "bulb" | "bubble" | "lcd";
+export type CountdownStyle = "stencil" | "bulb" | "bubble" | "lcd" | "plate" | "marker" | "vhs" | "receipt";
 
 export type Exterior = {
   body: string;
@@ -51,6 +55,8 @@ export type Exterior = {
   /** Curtain fold colors, dark → light. */
   curtain: [string, string, string];
   startText: string;
+  /** Text color on the cabinet body (dark for light cabinets). */
+  bodyText?: string;
 };
 
 export type Machine = {
@@ -77,7 +83,7 @@ export type Machine = {
   penHalo: boolean;
 };
 
-export const MACHINES: readonly Machine[] = [
+const ALL_MACHINES: Machine[] = [
   {
     id: "chemical-62",
     year: "'62",
@@ -260,9 +266,208 @@ export const MACHINES: readonly Machine[] = [
     pens: ["#ffffff", "#111111", "#ff7a1a", "#2f7bff"],
     penHalo: true,
   },
+  {
+    id: "tintype-1890",
+    year: "'1890",
+    name: "Tintype",
+    tagline: "Victorian plate portrait. Oval mat, soft edges, hold still.",
+    filter: {
+      id: "tintype",
+      name: "Tintype",
+      ops: [["grayscale", 1], ["sepia", 0.55], ["contrast", 1.35], ["brightness", 0.88]],
+      look: { grain: 0.12, vignette: 0.7, halation: 0.15, drift: 0.06, edgeBlur: 0.85 },
+    },
+    papers: [
+      { id: "velvet", name: "Velvet", paper: "#1b1612", ink: "#dcc79a", slot: "#2a221b" },
+      { id: "walnut", name: "Walnut", paper: "#3b2a1d", ink: "#ead6ad", slot: "#4a3726" },
+      { id: "cabinet", name: "Cabinet card", paper: "#e7dbc0", ink: "#3a2c1c", slot: "#d8cbb0" },
+    ],
+    layouts: ["strip-3", "grid-4"],
+    strip: {
+      photoRadius: 0,
+      captionFont: "display",
+      captionItalic: true,
+      captionUpper: false,
+      captionScale: 0.28,
+      captionOutline: null,
+      date: "footer",
+      dateFont: "display",
+      decorations: "none",
+      footer: 0.26,
+      defaultCaption: "A Portrait",
+      frame: "ornate",
+      photoShape: "oval",
+    },
+    countdown: "plate",
+    sound: "victorian",
+    exterior: {
+      body: "#4a3423",
+      base: "#2b1d12",
+      marquee: "#1a120b",
+      marqueeText: "#e9d6a8",
+      curtain: ["#0f2a1e", "#1a4030", "#265a43"],
+      startText: "#4a3423",
+    },
+    interior: "#0f0b07",
+    flash: "#fff4dc",
+    stickers: ["mustache", "tophat", "monocle", "text-xoxo", "heart", "star", "tape-smile", "sparkle"],
+    pens: ["#e9d6a8", "#1a120b", "#7a1f1f"],
+    penHalo: false,
+  },
+  {
+    id: "instant-72",
+    year: "'72",
+    name: "Instant",
+    tagline: "Square prints on white cards. Shake it (don't).",
+    filter: {
+      id: "instant",
+      name: "Instant",
+      ops: [["sepia", 0.18], ["saturate", 0.85], ["contrast", 0.88], ["brightness", 1.08], ["hue-rotate", 6]],
+      look: { grain: 0.06, vignette: 0.28, halation: 0.35, drift: 0.09 },
+    },
+    papers: [
+      { id: "sunbleached", name: "Sunbleached", paper: "#efe7d6", ink: "#3b3127", slot: "#e2d9c6" },
+      { id: "denim", name: "Denim", paper: "#3d5a80", ink: "#f2efe6", slot: "#4a678c" },
+      { id: "peach", name: "Peach", paper: "#f4c7a8", ink: "#4a2c1e", slot: "#e8b796" },
+    ],
+    layouts: ["grid-4", "wide-3"],
+    strip: {
+      photoRadius: 0.008,
+      captionFont: "hand",
+      captionItalic: false,
+      captionUpper: false,
+      captionScale: 0.34,
+      captionOutline: null,
+      date: "footer",
+      dateFont: "hand",
+      decorations: "none",
+      footer: 0.24,
+      defaultCaption: "summer days",
+      frame: "instant",
+    },
+    countdown: "marker",
+    sound: "instant",
+    exterior: {
+      body: "#ece6d8",
+      base: "#a39b8b",
+      marquee: "#24211d",
+      marqueeText: "#f6efe0",
+      curtain: ["#0e4f55", "#16707a", "#22939e"],
+      startText: "#c4532a",
+      bodyText: "#2a2620",
+    },
+    interior: "#0f1313",
+    flash: "#ffffff",
+    stickers: ["text-summer", "flower", "sun", "shades", "heart", "rainbow", "smiley", "star"],
+    pens: ["#1d1d1d", "#c4532a", "#2f6fad"],
+    penHalo: false,
+  },
+  {
+    id: "camcorder-89",
+    year: "'89",
+    name: "Camcorder",
+    tagline: "Home video freeze-frames. Scanlines, color bleed, PLAY.",
+    filter: {
+      id: "camcorder",
+      name: "Camcorder",
+      ops: [["saturate", 1.35], ["contrast", 1.12], ["brightness", 1.04], ["hue-rotate", -4]],
+      look: { grain: 0.05, vignette: 0.25, halation: 0.25, drift: 0.05, soften: 0.6, chroma: 0.7, scanlines: 0.6 },
+    },
+    papers: [
+      { id: "tape", name: "Tape black", paper: "#0f0f12", ink: "#e8e8e8", slot: "#1c1c22" },
+      { id: "bluescreen", name: "Blue screen", paper: "#1d3fbf", ink: "#ffffff", slot: "#2a4fd1" },
+      { id: "sleeve", name: "VHS sleeve", paper: "#d8d2c4", ink: "#1a1a1a", slot: "#c9c2b2" },
+    ],
+    layouts: ["grid-4", "wide-3"],
+    strip: {
+      photoRadius: 0.025,
+      captionFont: "pixel",
+      captionItalic: false,
+      captionUpper: true,
+      captionScale: 0.34,
+      captionOutline: null,
+      date: "vhs",
+      dateFont: "pixel",
+      decorations: "none",
+      footer: 0.2,
+      defaultCaption: "Home Video",
+    },
+    countdown: "vhs",
+    sound: "vhs",
+    exterior: {
+      body: "#2d3036",
+      base: "#15161a",
+      marquee: "#0a0a0c",
+      marqueeText: "#ff4a4a",
+      curtain: ["#14182a", "#1f2640", "#2c3557"],
+      startText: "#2d3036",
+    },
+    interior: "#05060c",
+    flash: "#e8f0ff",
+    stickers: ["rec-badge", "play-badge", "bolt", "shades", "smiley", "star", "text-omg", "heart"],
+    pens: ["#ff3b3b", "#ffffff", "#39ff14", "#ffd400"],
+    penHalo: true,
+  },
+  {
+    id: "thermal-25",
+    year: "'25",
+    name: "Thermal",
+    tagline: "Receipt-printer photos. Dithered, torn off, kept forever.",
+    filter: {
+      id: "thermal",
+      name: "Thermal",
+      ops: [["grayscale", 1], ["contrast", 1.25], ["brightness", 1.08]],
+      look: { grain: 0.03, vignette: 0, halation: 0, drift: 0.03, dither: 1 },
+    },
+    papers: [
+      { id: "thermal", name: "Thermal", paper: "#f3f1ea", ink: "#222120", slot: "#e5e2d8" },
+      { id: "thermal-pink", name: "Receipt pink", paper: "#f6e0e0", ink: "#2a1f1f", slot: "#ead0d0" },
+      { id: "thermal-yellow", name: "Receipt yellow", paper: "#f4ecc6", ink: "#26231a", slot: "#e8deb2" },
+    ],
+    layouts: ["strip-4", "strip-3"],
+    strip: {
+      photoRadius: 0,
+      captionFont: "typewriter",
+      captionItalic: false,
+      captionUpper: true,
+      captionScale: 0.15,
+      captionOutline: null,
+      date: "footer",
+      dateFont: "typewriter",
+      decorations: "none",
+      footer: 0.34,
+      defaultCaption: "Thank you, come again",
+      frame: "receipt",
+    },
+    countdown: "receipt",
+    sound: "thermal",
+    exterior: {
+      body: "#e6e3dc",
+      base: "#97938a",
+      marquee: "#1d1d1d",
+      marqueeText: "#f3f1ea",
+      curtain: ["#2e2e2e", "#474747", "#616161"],
+      startText: "#1d1d1d",
+      bodyText: "#1d1d1d",
+    },
+    interior: "#0e0e0e",
+    flash: "#ffffff",
+    stickers: ["barcode", "paid-stamp", "star", "arrow", "heart", "smiley", "text-lol", "tape-snap"],
+    pens: ["#1d1d1d", "#c0392b"],
+    penHalo: false,
+  },
 ];
 
-export const DEFAULT_MACHINE = MACHINES[1];
+/** "'1890" → 1890, "'62" → 1962, "'25" → 2025. */
+const yearOf = (m: Machine) => {
+  const n = Number(m.year.replace("'", ""));
+  return n >= 1000 ? n : n < 30 ? 2000 + n : 1900 + n;
+};
+
+/** The street, in chronological order. */
+export const MACHINES: readonly Machine[] = [...ALL_MACHINES].sort((a, b) => yearOf(a) - yearOf(b));
+
+export const DEFAULT_MACHINE = MACHINES.find((m) => m.id === "color-79") ?? MACHINES[0];
 
 export const machineById = (id: string) => MACHINES.find((m) => m.id === id) ?? DEFAULT_MACHINE;
 
@@ -277,10 +482,9 @@ const EXTRA_PAPERS: readonly Paper[] = [
 ];
 
 /** Every paper, from every machine plus extras, for mixing and matching. */
-export const PAPERS: readonly Paper[] = [
-  ...MACHINES.flatMap((m) => m.papers).filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i),
-  ...EXTRA_PAPERS,
-];
+export const PAPERS: readonly Paper[] = [...MACHINES.flatMap((m) => m.papers), ...EXTRA_PAPERS].filter(
+  (p, i, all) => all.findIndex((q) => q.id === p.id) === i,
+);
 
 export const paperById = (id: string) => PAPERS.find((p) => p.id === id);
 

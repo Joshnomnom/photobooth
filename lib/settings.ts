@@ -23,8 +23,9 @@ export type Settings = {
   lookId: Auto<string>;
   paperId: Auto<string>;
   effects: Effects;
-  corners: Auto<"square" | "rounded">;
-  date: Auto<"footer" | "stamp">;
+  corners: Auto<"square" | "rounded" | "oval">;
+  date: Auto<"footer" | "stamp" | "vhs">;
+  frame: Auto<"plain" | "instant" | "receipt" | "ornate">;
   decorations: Auto<"none" | "sparkles">;
   sound: Auto<SoundProfile>;
   pace: Pace;
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   effects: "normal",
   corners: "auto",
   date: "auto",
+  frame: "auto",
   decorations: "auto",
   sound: "auto",
   pace: "normal",
@@ -53,13 +55,14 @@ export const DEFAULT_SETTINGS: Settings = {
 /** Overrides that "Reset to machine defaults" clears (layout, timer, mode and mirror are kept). */
 export const MIX_DEFAULTS: Pick<
   Settings,
-  "lookId" | "paperId" | "effects" | "corners" | "date" | "decorations" | "sound" | "pace" | "prompts" | "flash"
+  "lookId" | "paperId" | "effects" | "corners" | "date" | "frame" | "decorations" | "sound" | "pace" | "prompts" | "flash"
 > = {
   lookId: "auto",
   paperId: "auto",
   effects: "normal",
   corners: "auto",
   date: "auto",
+  frame: "auto",
   decorations: "auto",
   sound: "auto",
   pace: "normal",
@@ -78,7 +81,8 @@ const PACE_MS: Record<Pace, number> = { quick: 450, normal: 1100, relaxed: 2400 
 
 function scaleLook(filter: Filter, scale: number): Filter {
   if (scale === 1) return filter;
-  const keys: (keyof LookParams)[] = ["grain", "vignette", "halation", "leak", "flash"];
+  // Dither is on/off, not a strength, so it isn't scaled.
+  const keys: (keyof LookParams)[] = ["grain", "vignette", "halation", "leak", "flash", "soften", "chroma", "scanlines", "edgeBlur"];
   const base: Partial<LookParams> = { grain: 0.09, vignette: 0.32, halation: 0.3, leak: 0, flash: 0, ...filter.look };
   const look: Partial<LookParams> = { ...filter.look };
   for (const k of keys) look[k] = (base[k] ?? 0) * scale;
@@ -95,7 +99,9 @@ export function resolve(settings: Settings) {
     ...machine.strip,
     photoRadius:
       settings.corners === "auto" ? machine.strip.photoRadius : settings.corners === "rounded" ? Math.max(machine.strip.photoRadius, 0.05) : 0,
+    photoShape: settings.corners === "auto" ? machine.strip.photoShape : settings.corners === "oval" ? "oval" : "rect",
     date: settings.date === "auto" ? machine.strip.date : settings.date,
+    frame: settings.frame === "auto" ? machine.strip.frame : settings.frame,
     decorations: settings.decorations === "auto" ? machine.strip.decorations : settings.decorations,
   };
   return {
@@ -131,10 +137,11 @@ export function loadSettings(): Settings | null {
       lookId: s.lookId === "auto" || LOOKS.some((l) => l.id === s.lookId) ? s.lookId : "auto",
       paperId: s.paperId === "auto" || PAPERS.some((p) => p.id === s.paperId) ? s.paperId : "auto",
       effects: oneOf(s.effects, ["off", "low", "normal", "strong"] as const, "normal"),
-      corners: oneOf(s.corners, ["auto", "square", "rounded"] as const, "auto"),
-      date: oneOf(s.date, ["auto", "footer", "stamp"] as const, "auto"),
+      corners: oneOf(s.corners, ["auto", "square", "rounded", "oval"] as const, "auto"),
+      date: oneOf(s.date, ["auto", "footer", "stamp", "vhs"] as const, "auto"),
+      frame: oneOf(s.frame, ["auto", "plain", "instant", "receipt", "ornate"] as const, "auto"),
       decorations: oneOf(s.decorations, ["auto", "none", "sparkles"] as const, "auto"),
-      sound: oneOf(s.sound, ["auto", "mechanical", "classic", "cute", "plastic"] as const, "auto"),
+      sound: oneOf(s.sound, ["auto", "mechanical", "classic", "cute", "plastic", "victorian", "instant", "vhs", "thermal"] as const, "auto"),
       pace: oneOf(s.pace, ["quick", "normal", "relaxed"] as const, "normal"),
       mirror: s.mirror !== false,
       prompts: s.prompts !== false,

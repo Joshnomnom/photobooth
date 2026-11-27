@@ -7,6 +7,7 @@ import type { Fonts } from "./fonts";
 import { encodeGif } from "./gif";
 import { PHOTO_H, PHOTO_W } from "./look";
 import type { Paper, StripStyle } from "./machines";
+import { drawCover } from "./strip";
 
 const PHOTO_OUT_W = 480;
 const PHOTO_OUT_H = Math.round((PHOTO_OUT_W * PHOTO_H) / PHOTO_W);
@@ -15,8 +16,9 @@ const FOOTER = 56;
 
 export async function makeFlipbook(shots: HTMLCanvasElement[], paper: Paper, style: StripStyle, caption: string, fonts: Fonts): Promise<Blob> {
   await document.fonts?.ready;
+  const photoH = style.frame === "instant" ? PHOTO_OUT_W : PHOTO_OUT_H;
   const w = PHOTO_OUT_W + BORDER * 2;
-  const h = PHOTO_OUT_H + BORDER + FOOTER;
+  const h = photoH + BORDER + FOOTER;
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
@@ -32,17 +34,18 @@ export async function makeFlipbook(shots: HTMLCanvasElement[], paper: Paper, sty
     ctx.fillRect(0, 0, w, h);
     ctx.save();
     ctx.beginPath();
-    if (radius > 0 && ctx.roundRect) ctx.roundRect(BORDER, BORDER, PHOTO_OUT_W, PHOTO_OUT_H, radius);
-    else ctx.rect(BORDER, BORDER, PHOTO_OUT_W, PHOTO_OUT_H);
+    if (style.photoShape === "oval") ctx.ellipse(BORDER + PHOTO_OUT_W / 2, BORDER + photoH / 2, PHOTO_OUT_W / 2, photoH / 2, 0, 0, Math.PI * 2);
+    else if (radius > 0 && ctx.roundRect) ctx.roundRect(BORDER, BORDER, PHOTO_OUT_W, photoH, radius);
+    else ctx.rect(BORDER, BORDER, PHOTO_OUT_W, photoH);
     ctx.clip();
-    ctx.drawImage(shot, BORDER, BORDER, PHOTO_OUT_W, PHOTO_OUT_H);
+    drawCover(ctx, shot, BORDER, BORDER, PHOTO_OUT_W, photoH);
     ctx.restore();
 
     const size = 22;
     ctx.font = `${style.captionItalic ? "italic " : ""}700 ${size}px ${fonts[style.captionFont]}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const y = BORDER + PHOTO_OUT_H + FOOTER / 2;
+    const y = BORDER + photoH + FOOTER / 2;
     if (style.captionOutline) {
       ctx.lineJoin = "round";
       ctx.lineWidth = 5;

@@ -9,7 +9,19 @@
 import { compileOps, type Filter, type LookParams } from "./filters";
 import { rng } from "./random";
 
-export const DEFAULT_LOOK: LookParams = { grain: 0.09, vignette: 0.32, halation: 0.3, drift: 0.05, leak: 0, flash: 0 };
+export const DEFAULT_LOOK: LookParams = {
+  grain: 0.09,
+  vignette: 0.32,
+  halation: 0.3,
+  drift: 0.05,
+  leak: 0,
+  flash: 0,
+  soften: 0,
+  chroma: 0,
+  scanlines: 0,
+  edgeBlur: 0,
+  dither: 0,
+};
 
 export const lookFor = (filter: Filter): LookParams => ({ ...DEFAULT_LOOK, ...filter.look });
 
@@ -60,6 +72,9 @@ export function develop(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D
   const pre = [exposure * (1 + warmth), exposure, exposure * (1 - warmth)];
   const matrices = compileOps(filter.ops);
 
+  // 1b. Softness: a low-resolution round trip (VHS tape, cheap lenses).
+  if (look.soften > 0) soften(canvas, ctx, look.soften);
+
   // 2 + 3. Color ops and vignette in one pass.
   const image = ctx.getImageData(0, 0, w, h);
   const d = image.data;
@@ -96,11 +111,17 @@ export function develop(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D
   }
   ctx.putImageData(image, 0, 0);
 
+  // 3b. Video artifacts: color bleed and scanlines.
+  if (look.chroma > 0 || look.scanlines > 0) videoArtifacts(ctx, w, h, look.chroma, look.scanlines);
+
   // 4. Halation: bright areas → blurred warm glow, screened back on top.
   if (look.halation > 0) addHalation(canvas, ctx, look.halation);
 
   // 4b. Light leak: a warm blob bleeding in from an edge, on some frames only.
   if (look.leak > 0 && rand() < look.leak) addLightLeak(ctx, w, h, rand);
+
+  // 4c. Old-lens edge blur: sharp center, soft swirl toward the corners.
+  if (look.edgeBlur > 0) addEdgeBlur(canvas, ctx, look.edgeBlur);
 
   // 5. Grain last, so it sits on top. Monochrome, strongest in shadows/midtones.
   if (look.grain > 0) {
@@ -117,6 +138,98 @@ export function develop(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D
     }
     ctx.putImageData(img, 0, 0);
   }
+
+  // 6. Thermal printers can only print black dots.
+  if (look.dither >= 0.5) dither1bit(ctx, w, h);
+}
+
+function soften(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, amount: number) {
+  const { width: w, height: h } = canvas;
+  const f = 1 + amount * 3;
+  const t = document.createElement("canvas");
+  t.width = Math.max(1, Math.round(w / f));
+  t.height = Math.max(1, Math.round(h / f));
+  const tctx = t.getContext("2d");
+  if (!tctx) return;
+  tctx.imageSmoothingQuality = "high";
+  tctx.drawImage(canvas, 0, 0, t.width, t.height);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(t, 0, 0, w, h);
+  ctx.restore();
+}
+
+function videoArtifacts(ctx: CanvasRenderingContext2D, w: number, h: number, chroma: number, scanlines: number) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const src = new Uint8ClampedArray(img.data);
+  const d = img.data;
+  const o = Math.round(chroma * 6);
+  const dark = 1 - scanlines * 0.35;
+  for (let y = 0; y < h; y++) {
+    const k = y % 4 < 2 ? dark : 1;
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const xr = Math.min(w - 1, x + o);
+      const xb = Math.max(0, x - o);
+      d[i] = src[(y * w + xr) * 4] * k;
+      d[i + 1] = src[i + 1] * k;
+      d[i + 2] = src[(y * w + xb) * 4 + 2] * k;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function addEdgeBlur(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, strength: number) {
+  const { width: w, height: h } = canvas;
+  const t = document.createElement("canvas");
+  t.width = w;
+  t.height = h;
+  const tctx = t.getContext("2d");
+  if (!tctx) return;
+  // Blurred copy via a small round trip, then keep it only toward the edges.
+  const s = document.createElement("canvas");
+  s.width = Math.max(1, Math.round(w / 12));
+  s.height = Math.max(1, Math.round(h / 12));
+  s.getContext("2d")?.drawImage(canvas, 0, 0, s.width, s.height);
+  tctx.imageSmoothingQuality = "high";
+  tctx.drawImage(s, 0, 0, w, h);
+  const g = tctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.25, w / 2, h / 2, Math.hypot(w, h) / 2);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(1, `rgba(0,0,0,${Math.min(1, strength)})`);
+  tctx.globalCompositeOperation = "destination-in";
+  tctx.fillStyle = g;
+  tctx.fillRect(0, 0, w, h);
+  ctx.drawImage(t, 0, 0);
+}
+
+/** 1-bit Floyd–Steinberg dither: thermal-printer black on paper white. */
+function dither1bit(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const lum = new Float32Array(w * h);
+  for (let p = 0; p < w * h; p++) lum[p] = 0.299 * d[p * 4] + 0.587 * d[p * 4 + 1] + 0.114 * d[p * 4 + 2];
+  const INK = [34, 33, 31];
+  const PAPER = [243, 241, 234];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      const old = lum[p];
+      const on = old < 128;
+      const err = old - (on ? 0 : 255);
+      const c = on ? INK : PAPER;
+      d[p * 4] = c[0];
+      d[p * 4 + 1] = c[1];
+      d[p * 4 + 2] = c[2];
+      if (x + 1 < w) lum[p + 1] += (err * 7) / 16;
+      if (y + 1 < h) {
+        if (x > 0) lum[p + w - 1] += (err * 3) / 16;
+        lum[p + w] += (err * 5) / 16;
+        if (x + 1 < w) lum[p + w + 1] += err / 16;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 function addHalation(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, strength: number) {

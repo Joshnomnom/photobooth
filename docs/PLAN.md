@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (Phase 6 built; Phase 7 proposed)_
+_Last updated: 2026-11-27 (eight machines)_
 
 ## Vision
 
@@ -209,6 +209,19 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 
 **Verified:** typecheck, lint; headless Chrome: a fully mixed setup (Grid · 9, no countdown, Noir + strong effects, Midnight paper, rounded corners, orange stamp, sparkles, cute sound, quick pace, prompts/flash off) persists across reload, shoots 9 photos in ~6 s, and the strip carries every choice; reset clears the mix; no horizontal scroll on mobile.
 
+### Phase 6b · Four more machines ✅
+
+The street now runs chronologically: '1890 → '62 → '72 → '79 → '89 → '98 → '04 → '25.
+
+- [x] **'1890 Tintype**: silver-brown plate tone, lens blur toward the edges (`edgeBlur`), heavy vignette; oval windows with an ornate double rule; italic caption; walnut cabinet, green velvet; ornate-plate countdown; slow heavy shutter; mustache / top hat / monocle stickers
+- [x] **'72 Instant**: soft faded color; square photos each on a white card with the thick bottom edge (`frame: "instant"`); marker caption (Caveat); cream cabinet with dark lettering; marker countdown; click + eject sound; "summer '72" sticker; square crop guide in the booth
+- [x] **'89 Camcorder**: softness, red/blue color bleed, scanlines (`soften`, `chroma`, `scanlines`); "PLAY ▶ / SP / time / date" on-screen overlay in a pixel font (VT323); blue-screen countdown; button-clunk sound; REC and PLAY stickers; live scanlines over the camera
+- [x] **'25 Thermal**: 1-bit Floyd–Steinberg dithering (`dither`); receipt frame with header, receipt number, dashed rules, barcode and torn zig-zag edges (transparent in the PNG); receipt countdown; printer-chatter sound; barcode and PAID stickers
+- [x] Mix & match gains: corners **Oval**, date **VHS**, a **Frame** override (plain / instant cards / receipt / ornate), four new sound voices; new effects scale with "Film effects"
+- [x] Renderer: photos are cover-cropped into any window shape; the flipbook follows square and oval windows
+
+**Verified:** typecheck, lint; headless Chrome shoots a full strip on each new machine (countdown style, crop guide, dither/scanlines/torn-edge checks), plus rooms, mixed options and keepsakes regressions; no console errors.
+
 ### Phase 7 · Outcomes: what people leave with ⏳ (proposed)
 
 Research: [07-user-outcomes](research/07-user-outcomes.md). The style is strong; the gaps are in sharing, motion and occasions.
@@ -262,3 +275,4 @@ Research: [07-user-outcomes](research/07-user-outcomes.md). The style is strong;
 | 2026-11-27 | "Lights on" is a button, not automatic | The reveal of real color is the payoff; giving the visitor the switch makes it theirs |
 | 2026-11-27 | Machines become presets; every setting can be overridden ("Mix & match") | People want to combine freely; "Machine" defaults keep the one-tap experience |
 | 2026-11-27 | Live setup preview uses real vintage faces developed in the chosen look | Shows the look and the frame honestly before shooting, without needing the camera |
+| 2026-11-27 | Four more machines ('1890, '72, '89, '25); street in chronological order | Each adds a distinct outcome (oval portrait, instant cards, video freeze-frames, receipt) rather than another color filter |

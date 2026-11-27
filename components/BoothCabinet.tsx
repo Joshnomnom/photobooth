@@ -15,6 +15,10 @@ const SAMPLES: Record<string, { src: string; layout: "vertical" | "stack"; filte
   "color-79": { src: "/assets/booth-strip-vintage.webp", layout: "stack", filter: "sepia(0.35) saturate(1.2)" },
   "sticker-98": { src: "/assets/booth-strip-b.webp", layout: "vertical", filter: "sepia(0.4) hue-rotate(-35deg) saturate(1.6) brightness(1.08)" },
   "disposable-04": { src: "/assets/booth-strip-vintage.webp", layout: "stack", filter: "contrast(1.2) saturate(1.3)" },
+  "tintype-1890": { src: "/assets/booth-strip-a.webp", layout: "vertical", filter: "sepia(0.8) contrast(1.3) brightness(0.85)" },
+  "instant-72": { src: "/assets/booth-strip-vintage.webp", layout: "stack", filter: "sepia(0.2) saturate(0.9) brightness(1.08)" },
+  "camcorder-89": { src: "/assets/booth-strip-b.webp", layout: "vertical", filter: "sepia(0.3) hue-rotate(180deg) saturate(1.8) contrast(1.1)" },
+  "thermal-25": { src: "/assets/booth-strip-b.webp", layout: "vertical", filter: "grayscale(1) contrast(2.2) brightness(1.15)" },
 };
 
 type Props = {
@@ -38,6 +42,7 @@ export function BoothCabinet({ machine, active, shots, onSelect, onStart }: Prop
     "--curtain-b": ex.curtain[1],
     "--curtain-c": ex.curtain[2],
     "--start-text": ex.startText,
+    "--cab-text-body": ex.bodyText ?? "rgb(255 255 255 / 0.9)",
   } as CSSProperties;
 
   return (
@@ -74,7 +79,7 @@ export function BoothCabinet({ machine, active, shots, onSelect, onStart }: Prop
 
           {/* Sample window */}
           <div className="flex w-[19%] flex-col items-center gap-1">
-            <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white/85">Samples</span>
+            <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-[var(--cab-text-body)]">Samples</span>
             <div className="chrome-bezel w-full rounded-[3px] p-[3px]">
               <div className="sample-glass bg-[#e9e2d3] p-[2px]" style={{ filter: sample.filter }}>
                 {sample.layout === "vertical" ? (
@@ -101,7 +106,9 @@ export function BoothCabinet({ machine, active, shots, onSelect, onStart }: Prop
             <span className="chrome-bezel grid h-12 w-5 place-items-center rounded-[4px]" aria-hidden>
               <span className="h-8 w-1 rounded-full bg-black/80" />
             </span>
-            <p className="max-w-[8.5rem] text-[11px] leading-snug text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0/0.5)]">{machine.tagline}</p>
+            <p className={`max-w-[8.5rem] text-[11px] leading-snug text-[var(--cab-text-body)] ${ex.bodyText ? "" : "[text-shadow:0_1px_2px_rgb(0_0_0/0.5)]"}`}>
+              {machine.tagline}
+            </p>
           </div>
           <span className="chrome-bezel shrink-0 rounded-full p-1.5">
             <button

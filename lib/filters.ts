@@ -25,6 +25,16 @@ export type LookParams = {
   leak: number;
   /** Harsh on-camera flash: bright center, falling off to the edges. */
   flash: number;
+  /** Low-resolution softness (VHS). */
+  soften: number;
+  /** Red/blue channel bleed, in steps of ~6 px (VHS). */
+  chroma: number;
+  /** Dark horizontal scanlines (VHS). */
+  scanlines: number;
+  /** Lens blur toward the edges (old portrait lenses). */
+  edgeBlur: number;
+  /** 1 = 1-bit dithered black and white (thermal printer). */
+  dither: number;
 };
 
 export type Filter = {

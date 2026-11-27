@@ -38,7 +38,7 @@ function wait(ms: number, signal: AbortSignal) {
 export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }: Props) {
   const camera = useCamera();
   const { start: startCamera } = camera;
-  const { machine, layout, filter, sound: profile, countdown: countdownSecs, gapMs } = resolve(settings);
+  const { machine, layout, filter, style, sound: profile, countdown: countdownSecs, gapMs } = resolve(settings);
   const look = lookFor(filter);
   const film = settings.mode === "film";
   const total = shotCount(layout);
@@ -203,6 +203,18 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
           {/* Live approximation of the film look; the capture applies the real thing. */}
           <div className="film-vignette pointer-events-none absolute inset-0" style={{ opacity: Math.min(1, look.vignette * 2) }} aria-hidden />
           <div className="film-grain pointer-events-none absolute inset-0" style={{ opacity: Math.min(0.45, look.grain * 2.2) }} aria-hidden />
+          {look.scanlines > 0 && <div className="live-scanlines pointer-events-none absolute inset-0" style={{ opacity: Math.min(1, look.scanlines * 1.4) }} aria-hidden />}
+          {/* Crop guides: show what the strip will keep. */}
+          {style.frame === "instant" && (
+            <div className="crop-guide-square pointer-events-none absolute left-1/2 top-1/2 aspect-square h-full -translate-x-1/2 -translate-y-1/2" aria-hidden />
+          )}
+          {style.photoShape === "oval" && (
+            <div
+              className="crop-guide-oval pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              style={{ width: style.frame === "instant" ? "75%" : "100%", height: "100%" }}
+              aria-hidden
+            />
+          )}
 
           {posing !== null && settings.prompts && (
             <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent p-4 text-center">

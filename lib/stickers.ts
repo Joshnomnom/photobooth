@@ -29,7 +29,15 @@ export type StickerKind =
   | "text-bff"
   | "text-cutie"
   | "text-lol"
-  | "text-omg";
+  | "text-omg"
+  | "mustache"
+  | "tophat"
+  | "monocle"
+  | "text-summer"
+  | "rec-badge"
+  | "play-badge"
+  | "barcode"
+  | "paid-stamp";
 
 type Draw = (ctx: CanvasRenderingContext2D, fonts: Fonts) => void;
 
@@ -336,9 +344,127 @@ const ART: Record<StickerKind, { label: string; draw: Draw }> = {
   "text-cutie": { label: "cutie", draw: word("cutie", "rounded", "#8a5cf6", 38) },
   "text-lol": { label: "LOL", draw: word("LOL", "body", "#2f7bff", 42, 800) },
   "text-omg": { label: "OMG", draw: word("OMG", "body", "#ff7a1a", 40, 800, 0.1) },
+  // Added with the 1890, 72, 89 and 25 machines.
+  mustache: { label: "Mustache", draw: (ctx: CanvasRenderingContext2D) => dieCut(ctx, mustachePath(), "#2a1d14") },
+  tophat: {
+    label: "Top hat",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.rect(-24, -42, 48, 56);
+      p.roundRect(-46, 10, 92, 14, 6);
+      dieCut(ctx, p, "#1b1b1d");
+      ctx.fillStyle = "#7a1f1f";
+      ctx.fillRect(-24, 0, 48, 9);
+    },
+  },
+  monocle: {
+    label: "Monocle",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const ring = new Path2D();
+      ring.arc(-6, -6, 26, 0, Math.PI * 2);
+      ctx.save();
+      ctx.lineWidth = 9 + OUTLINE;
+      ctx.strokeStyle = "#ffffff";
+      ctx.shadowColor = "rgba(0,0,0,0.25)";
+      ctx.shadowBlur = 6;
+      ctx.stroke(ring);
+      ctx.restore();
+      ctx.fillStyle = "rgba(200,225,255,0.35)";
+      ctx.fill(ring);
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = "#c9a24a";
+      ctx.stroke(ring);
+      ctx.beginPath();
+      ctx.moveTo(14, 12);
+      ctx.quadraticCurveTo(30, 30, 22, 46);
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    },
+  },
+  "text-summer": { label: "summer '72", draw: word("summer '72", "hand", "#c4532a", 38, 600) },
+  "rec-badge": {
+    label: "REC",
+    draw: (ctx: CanvasRenderingContext2D, fonts: Fonts) => {
+      const p = new Path2D();
+      p.roundRect(-46, -20, 92, 40, 8);
+      dieCut(ctx, p, "#111111", 8);
+      ctx.fillStyle = "#ff3b3b";
+      ctx.beginPath();
+      ctx.arc(-24, 0, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `400 34px ${fonts.pixel}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText("REC", -10, 2);
+    },
+  },
+  "play-badge": {
+    label: "PLAY",
+    draw: (ctx: CanvasRenderingContext2D, fonts: Fonts) => {
+      const p = new Path2D();
+      p.roundRect(-50, -20, 100, 40, 6);
+      dieCut(ctx, p, "#1d3fbf", 8);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `400 32px ${fonts.pixel}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("PLAY \u25B6", 0, 2);
+    },
+  },
+  barcode: {
+    label: "Barcode",
+    draw: (ctx: CanvasRenderingContext2D) => {
+      const p = new Path2D();
+      p.rect(-48, -26, 96, 52);
+      dieCut(ctx, p, "#f6f4ee", 8);
+      ctx.fillStyle = "#1d1d1d";
+      const widths = [3, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 3, 1, 2, 1, 3, 1, 1, 2, 3, 1, 2];
+      let x = -40;
+      widths.forEach((bw, i) => {
+        if (i % 2 === 0) ctx.fillRect(x, -18, bw * 1.6, 30);
+        x += bw * 1.8;
+      });
+    },
+  },
+  "paid-stamp": {
+    label: "PAID stamp",
+    draw: (ctx: CanvasRenderingContext2D, fonts: Fonts) => {
+      ctx.save();
+      ctx.rotate(-0.2);
+      ctx.strokeStyle = "rgba(196,40,40,0.9)";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(-46, -22, 92, 44);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-40, -16, 80, 32);
+      ctx.fillStyle = "rgba(196,40,40,0.9)";
+      ctx.font = `700 30px ${fonts.typewriter}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("PAID", 0, 2);
+      ctx.restore();
+    },
+  },
 };
 
 export const stickerLabel = (kind: StickerKind) => ART[kind].label;
+
+function mustachePath() {
+  const p = new Path2D();
+  p.moveTo(0, -6);
+  p.bezierCurveTo(10, -18, 30, -14, 34, -2);
+  p.bezierCurveTo(40, 6, 50, 4, 54, -6);
+  p.bezierCurveTo(54, 12, 34, 20, 18, 10);
+  p.bezierCurveTo(10, 6, 4, 4, 0, 6);
+  p.bezierCurveTo(-4, 4, -10, 6, -18, 10);
+  p.bezierCurveTo(-34, 20, -54, 12, -54, -6);
+  p.bezierCurveTo(-50, 4, -40, 6, -34, -2);
+  p.bezierCurveTo(-30, -14, -10, -18, 0, -6);
+  p.closePath();
+  return p;
+}
+
+
 
 /** Draws a sticker centered at (x, y), `size` px across, rotated by `rotation` radians. */
 export function drawSticker(ctx: CanvasRenderingContext2D, kind: StickerKind, x: number, y: number, size: number, rotation: number, fonts: Fonts) {

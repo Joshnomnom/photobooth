@@ -14,7 +14,7 @@ import { useSyncExternalStore } from "react";
 export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "pop" | "ready" | "timeup" | "switch";
 
 /** Each machine has its own voice. See lib/machines.ts. */
-export type SoundProfile = "mechanical" | "classic" | "cute" | "plastic";
+export type SoundProfile = "mechanical" | "classic" | "cute" | "plastic" | "victorian" | "instant" | "vhs" | "thermal";
 
 const FILES = [
   "coin",
@@ -186,7 +186,27 @@ const PRINT_PUSHES: [number, number][] = [
   [0.8, 1],
 ];
 
-const MOTOR_RATE: Record<SoundProfile, number> = { mechanical: 0.8, classic: 1, cute: 1.25, plastic: 1.1 };
+const MOTOR_RATE: Record<SoundProfile, number> = {
+  mechanical: 0.8,
+  classic: 1,
+  cute: 1.25,
+  plastic: 1.1,
+  victorian: 0.65,
+  instant: 1.35,
+  vhs: 0.9,
+  thermal: 2.2,
+};
+
+const TICK_HZ: Record<SoundProfile, number> = {
+  mechanical: 1050,
+  classic: 1320,
+  cute: 1600,
+  plastic: 1900,
+  victorian: 880,
+  instant: 1500,
+  vhs: 2000,
+  thermal: 2400,
+};
 
 export function play(name: SoundName, opts: { profile?: SoundProfile; duration?: number } = {}) {
   if (!ctx || !bus || isMuted()) return;
@@ -196,8 +216,7 @@ export function play(name: SoundName, opts: { profile?: SoundProfile; duration?:
   const profile = opts.profile ?? "classic";
 
   if (name === "tick") {
-    const f = profile === "mechanical" ? 1050 : profile === "cute" ? 1600 : profile === "plastic" ? 1900 : 1320;
-    tick(c, bus, t, f, profile === "cute");
+    tick(c, bus, t, TICK_HZ[profile], profile === "cute");
     return;
   }
 
@@ -209,6 +228,21 @@ export function play(name: SoundName, opts: { profile?: SoundProfile; duration?:
         return sample("coin", at, { gain: 0.9 });
       case "shutter":
         if (profile === "plastic") return sample("shutter-compact", at);
+        if (profile === "victorian") return sample("shutter-slr", at, { rate: 0.68 });
+        if (profile === "instant") {
+          // Click, then the print ejecting.
+          const ok = sample("shutter-light", at);
+          const motor = buffers.get("motor");
+          if (motor) sample("motor", at + 0.18, { rate: 1.5, offset: 0.4, duration: 1.1, gain: 0.5, fade: 0.05 });
+          return ok;
+        }
+        if (profile === "vhs") return sample("switch", at, { gain: 0.9, rate: 0.85 });
+        if (profile === "thermal") {
+          // Light click, then the print head chattering.
+          const ok = sample("shutter-light", at, { rate: 1.3, gain: 0.7 });
+          if (buffers.get("motor")) sample("motor", at + 0.1, { rate: 2.3, offset: 1, duration: 1.2, gain: 0.45, fade: 0.04 });
+          return ok;
+        }
         if (profile === "cute") {
           const ok = sample("shutter-light", at, { rate: 1.08 });
           sample("sparkle", at + 0.06, { gain: 0.7 });

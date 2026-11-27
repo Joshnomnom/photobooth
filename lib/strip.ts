@@ -28,7 +28,7 @@ export const shotCount = (layout: Layout) => layout.cols * layout.rows;
 /** Color of a photo that hasn't developed yet: murky grey-green, like fresh print paper. */
 const UNDEVELOPED = "#a9a596";
 
-const WEIGHT: Record<FontKey, number> = { display: 400, body: 700, typewriter: 700, groovy: 400, rounded: 700 };
+const WEIGHT: Record<FontKey, number> = { display: 400, body: 700, typewriter: 700, groovy: 400, rounded: 700, hand: 600, pixel: 400 };
 
 export type StripOptions = {
   layout: Layout;
@@ -79,21 +79,53 @@ function roundedPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 
 type Rect = { x: number; y: number; w: number; h: number };
 
+/** Draws an image so it fills the box, cropping the middle (like CSS object-fit: cover). */
+export function drawCover(ctx: CanvasRenderingContext2D, img: CanvasImageSource & { width: number; height: number }, x: number, y: number, w: number, h: number) {
+  const target = w / h;
+  let sw = img.width;
+  let sh = img.height;
+  if (sw / sh > target) sw = sh * target;
+  else sh = sw / target;
+  ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+}
+
+/** Path for one photo window: rectangle (optionally rounded) or oval. */
+function windowPath(ctx: CanvasRenderingContext2D, shape: "rect" | "oval", x: number, y: number, w: number, h: number, r: number) {
+  if (shape === "oval") {
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+  } else {
+    roundedPath(ctx, x, y, w, h, r);
+  }
+}
+
 /**
- * Draws the finished strip. The on-screen preview, the print animation and
+ * Draws the finished strip. The on-screen preview, the darkroom print and
  * the downloaded file all come from this function, so they always match.
  */
 export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
   const { layout, paper, style, shots, caption, showDate, fonts, undeveloped, seed } = opts;
+  const frame = style.frame ?? "plain";
+  const shape = style.photoShape ?? "rect";
+  const instant = frame === "instant";
+  const receipt = frame === "receipt";
+
   const cellW = layout.cols === 1 ? 900 : 720;
-  const cellH = (cellW * PHOTO_H) / PHOTO_W;
+  // Instant prints: a square photo on its own white card with a thick bottom edge.
+  const matSide = instant ? Math.round(cellW * 0.06) : 0;
+  const matBottom = instant ? Math.round(cellW * 0.2) : 0;
+  const photoW = cellW - matSide * 2;
+  const photoH = instant ? photoW : Math.round((photoW * PHOTO_H) / PHOTO_W);
+  const cellH = matSide + photoH + matBottom;
   const pad = Math.round(cellW * 0.07);
-  const gap = Math.round(cellW * 0.035);
+  const gap = Math.round(cellW * (instant ? 0.05 : 0.035));
+  const header = receipt ? Math.round(cellW * 0.26) : 0;
   const footer = Math.round(cellW * style.footer * (layout.cols === 1 ? 1 : 1.35));
-  const radius = style.photoRadius * cellW;
+  const radius = style.photoRadius * photoW;
+  const tooth = receipt ? Math.round(pad * 0.35) : 0;
 
   const width = pad * 2 + layout.cols * cellW + (layout.cols - 1) * gap;
-  const height = pad + layout.rows * cellH + (layout.rows - 1) * gap + footer;
+  const height = pad + header + layout.rows * cellH + (layout.rows - 1) * gap + footer + tooth;
   canvas.width = width;
   canvas.height = height;
 
@@ -107,54 +139,85 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
     ctx.fillRect(0, 0, width, height);
   }
 
+  const spaced = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+  const setSpacing = (v: string) => {
+    if ("letterSpacing" in spaced) spaced.letterSpacing = v;
+  };
+  const maxTextW = width - pad * 2;
+
+  if (receipt) drawReceiptHeader(ctx, width, pad + tooth, header, pad, paper.ink, fonts, seed, setSpacing);
+
   const photos: Rect[] = [];
   for (let i = 0; i < shotCount(layout); i++) {
     const col = i % layout.cols;
     const row = Math.floor(i / layout.cols);
     const x = pad + col * (cellW + gap);
-    const y = pad + row * (cellH + gap);
+    const y = pad + tooth + header + row * (cellH + gap);
+    const px = x + matSide;
+    const py = y + matSide;
     photos.push({ x, y, w: cellW, h: cellH });
     const shot = shots[i];
 
+    if (instant) {
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.28)";
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = "#fbfaf5";
+      ctx.fillRect(x, y, cellW, cellH);
+      ctx.restore();
+    }
+
     ctx.save();
-    roundedPath(ctx, x, y, cellW, cellH, radius);
+    windowPath(ctx, shape, px, py, photoW, photoH, radius);
     ctx.clip();
     if (undeveloped) {
       ctx.fillStyle = UNDEVELOPED;
-      ctx.fillRect(x, y, cellW, cellH);
+      ctx.fillRect(px, py, photoW, photoH);
     } else if (shot) {
-      ctx.drawImage(shot, x, y, cellW, cellH);
-      if (showDate && style.date === "stamp") drawDateStamp(ctx, x, y, cellW, cellH);
+      drawCover(ctx, shot, px, py, photoW, photoH);
+      if (showDate && style.date === "stamp") drawDateStamp(ctx, px, py, photoW, photoH);
+      if (showDate && style.date === "vhs") drawVhsOverlay(ctx, px, py, photoW, photoH, fonts);
     } else {
       ctx.fillStyle = paper.slot;
-      ctx.fillRect(x, y, cellW, cellH);
+      ctx.fillRect(px, py, photoW, photoH);
       ctx.fillStyle = paper.ink;
       ctx.globalAlpha = 0.35;
-      ctx.font = `400 ${Math.round(cellH * 0.28)}px ${fonts.display}`;
+      ctx.font = `400 ${Math.round(photoH * 0.28)}px ${fonts.display}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(String(i + 1), x + cellW / 2, y + cellH / 2);
+      ctx.fillText(String(i + 1), px + photoW / 2, py + photoH / 2);
     }
     ctx.restore();
 
     // A soft edge where the photo meets the paper.
     ctx.strokeStyle = "rgba(0,0,0,0.14)";
     ctx.lineWidth = 2;
-    roundedPath(ctx, x + 1, y + 1, cellW - 2, cellH - 2, radius);
+    windowPath(ctx, shape, px + 1, py + 1, photoW - 2, photoH - 2, radius);
     ctx.stroke();
+
+    // Victorian mount: a fine double rule around the window.
+    if (frame === "ornate") {
+      ctx.save();
+      ctx.strokeStyle = paper.ink;
+      ctx.globalAlpha = 0.6;
+      ctx.lineWidth = 3;
+      const o1 = photoW * 0.012;
+      windowPath(ctx, shape, px - o1, py - o1, photoW + o1 * 2, photoH + o1 * 2, radius + o1);
+      ctx.stroke();
+      ctx.lineWidth = 1.5;
+      const o2 = photoW * 0.026;
+      windowPath(ctx, shape, px - o2, py - o2, photoW + o2 * 2, photoH + o2 * 2, radius + o2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   if (style.decorations === "sparkles") drawSparkles(ctx, width, height, photos, pad, paper.ink, seed);
 
-  // Footer: caption, then the date if it isn't stamped on the photos.
-  const footerTop = height - footer;
+  // Footer: caption, then the date if it's printed (not stamped or on-screen).
+  const footerTop = height - footer - tooth;
   const dateInFooter = showDate && style.date === "footer";
-  const maxTextW = width - pad * 2;
-  const spaced = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
-  const setSpacing = (v: string) => {
-    if ("letterSpacing" in spaced) spaced.letterSpacing = v;
-  };
-
   let title = caption.trim() || style.defaultCaption;
   if (style.captionUpper) title = title.toUpperCase();
   const size = Math.round(footer * style.captionScale);
@@ -162,7 +225,7 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   setSpacing(style.captionUpper ? `${Math.round(size * 0.12)}px` : "0px");
-  const ty = footerTop + footer * (dateInFooter ? 0.42 : 0.5);
+  const ty = footerTop + footer * (receipt ? 0.24 : dateInFooter ? 0.42 : 0.5);
   if (style.captionOutline) {
     ctx.lineJoin = "round";
     ctx.lineWidth = size * 0.22;
@@ -177,14 +240,126 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
       .toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
       .toUpperCase();
     ctx.globalAlpha = 0.65;
-    ctx.font = `600 ${Math.round(footer * 0.11)}px ${fonts[style.dateFont]}`;
+    ctx.font = `600 ${Math.round(footer * (receipt ? 0.075 : 0.11))}px ${fonts[style.dateFont]}`;
     setSpacing("4px");
-    ctx.fillText(date, width / 2, footerTop + footer * 0.74, maxTextW);
+    ctx.fillText(date, width / 2, footerTop + footer * (receipt ? 0.42 : 0.74), maxTextW);
     ctx.globalAlpha = 1;
   }
   setSpacing("0px");
 
+  if (receipt) {
+    drawReceiptFooter(ctx, width, footerTop, footer, pad, paper.ink, seed);
+    tearEdges(ctx, width, height, tooth);
+  }
+
   if (opts.decorations) drawDecorations(ctx, opts.decorations, fonts);
+}
+
+/** Receipt header: shop name, receipt number, dashed rule. */
+function drawReceiptHeader(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  top: number,
+  header: number,
+  pad: number,
+  ink: string,
+  fonts: Fonts,
+  seed: number,
+  setSpacing: (v: string) => void,
+) {
+  ctx.save();
+  ctx.fillStyle = ink;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${Math.round(header * 0.2)}px ${fonts.typewriter}`;
+  setSpacing(`${Math.round(header * 0.03)}px`);
+  ctx.fillText("THE SNAP ROOM", width / 2, top + header * 0.22);
+  ctx.font = `400 ${Math.round(header * 0.1)}px ${fonts.typewriter}`;
+  setSpacing("2px");
+  const no = String((seed >>> 0) % 10000).padStart(4, "0");
+  ctx.fillText(`PHOTO RECEIPT  ·  No. ${no}`, width / 2, top + header * 0.48);
+  ctx.fillText("4 POSES  ·  1 STRIP  ·  0.00", width / 2, top + header * 0.64);
+  setSpacing("0px");
+  dashedRule(ctx, pad, width - pad, top + header * 0.86, ink);
+  ctx.restore();
+}
+
+/** Receipt footer: dashed rule, barcode. */
+function drawReceiptFooter(ctx: CanvasRenderingContext2D, width: number, top: number, footer: number, pad: number, ink: string, seed: number) {
+  dashedRule(ctx, pad, width - pad, top + footer * 0.08, ink);
+  const rand = rng(seed ^ 0xbadc0de);
+  const bw = Math.min(width - pad * 2, footer * 1.6);
+  let x = (width - bw) / 2;
+  const y = top + footer * 0.56;
+  const h = footer * 0.3;
+  ctx.save();
+  ctx.fillStyle = ink;
+  while (x < (width + bw) / 2) {
+    const w = (1 + Math.floor(rand() * 3)) * (footer * 0.008);
+    if (rand() > 0.35) ctx.fillRect(x, y, w, h);
+    x += w + footer * 0.006;
+  }
+  ctx.restore();
+}
+
+function dashedRule(ctx: CanvasRenderingContext2D, x1: number, x2: number, y: number, ink: string) {
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.globalAlpha = 0.6;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([12, 10]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y);
+  ctx.lineTo(x2, y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Torn paper: zig-zag cut out of the top and bottom edges (transparent in the PNG). */
+function tearEdges(ctx: CanvasRenderingContext2D, width: number, height: number, tooth: number) {
+  if (tooth <= 0) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  for (let x = 0; x <= width; x += tooth * 2) {
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + tooth, tooth);
+    ctx.lineTo(x + tooth * 2, 0);
+    ctx.moveTo(x, height);
+    ctx.lineTo(x + tooth, height - tooth);
+    ctx.lineTo(x + tooth * 2, height);
+  }
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Camcorder on-screen display: PLAY, tape speed, time and date. */
+function drawVhsOverlay(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fonts: Fonts) {
+  const size = Math.round(h * 0.085);
+  const now = new Date();
+  const hh = now.getHours();
+  const time = `${hh < 12 ? "AM" : "PM"} ${((hh + 11) % 12) + 1}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const date = now
+    .toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+    .toUpperCase()
+    .replace(",", "")
+    .replace(" ", ".");
+  ctx.save();
+  ctx.font = `400 ${size}px ${fonts.pixel}`;
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "rgba(0,0,0,0.85)";
+  ctx.shadowOffsetX = size * 0.06;
+  ctx.shadowOffsetY = size * 0.06;
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  ctx.fillText("PLAY \u25B6", x + w * 0.05, y + h * 0.05);
+  ctx.textAlign = "right";
+  ctx.fillText("SP", x + w * 0.95, y + h * 0.05);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(time, x + w * 0.05, y + h * 0.95 - size);
+  ctx.fillText(date, x + w * 0.05, y + h * 0.95);
+  ctx.restore();
 }
 
 /** Orange seven-segment date, burned into the bottom-right of a photo. */

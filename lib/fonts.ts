@@ -1,4 +1,4 @@
-import { Caveat, Courier_Prime, Fraunces, Fredoka, Inter, Shrikhand } from "next/font/google";
+import { Caveat, Courier_Prime, Fraunces, Fredoka, Inter, Shrikhand, VT323 } from "next/font/google";
 
 export const display = Fraunces({
   subsets: ["latin"],
@@ -45,7 +45,15 @@ export const hand = Caveat({
   display: "swap",
 });
 
-export const fontVariables = [display, body, typewriter, groovy, rounded, hand].map((f) => f.variable).join(" ");
+/** '89 Camcorder: on-screen display pixel type. */
+export const pixel = VT323({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--nf-pixel",
+  display: "swap",
+});
+
+export const fontVariables = [display, body, typewriter, groovy, rounded, hand, pixel].map((f) => f.variable).join(" ");
 
 /** Resolved font families for canvas drawing. */
 export const CANVAS_FONTS = {
@@ -54,6 +62,8 @@ export const CANVAS_FONTS = {
   typewriter: typewriter.style.fontFamily,
   groovy: groovy.style.fontFamily,
   rounded: rounded.style.fontFamily,
+  hand: hand.style.fontFamily,
+  pixel: pixel.style.fontFamily,
 };
 
 export type FontKey = keyof typeof CANVAS_FONTS;

@@ -16,6 +16,7 @@
   --font-groovy: var(--nf-groovy), Georgia, serif;
   --font-rounded: var(--nf-rounded), system-ui, sans-serif;
   --font-hand: var(--nf-hand), "Comic Sans MS", cursive;
+  --font-pixel: var(--nf-pixel), "Courier New", monospace;
 }
 
 html {
@@ -292,6 +293,75 @@ button:not(:disabled) {
   -webkit-text-stroke: 0.09em #ffffff;
   paint-order: stroke fill;
   text-shadow: 0 6px 0 rgb(91 42 110 / 0.55);
+}
+
+/* '1890 Tintype: engraved numeral in an ornate oval plate. */
+.count-plate {
+  display: grid;
+  place-items: center;
+  width: min(30cqw, 180px);
+  aspect-ratio: 3 / 4;
+  border-radius: 50%;
+  border: 4px double #e9d6a8;
+  box-shadow: 0 0 0 10px rgb(26 18 11 / 0.6), 0 0 40px rgb(233 214 168 / 0.25);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: min(18cqw, 120px);
+  line-height: 1;
+  color: #f3e3bd;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.6);
+}
+
+/* '72: marker numbers, like writing on the print's white edge. */
+.count-marker {
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: min(36cqw, 220px);
+  line-height: 1;
+  color: #fbfaf5;
+  transform: rotate(-6deg);
+  text-shadow: 0 4px 0 rgb(0 0 0 / 0.35);
+}
+
+/* '89: camcorder on-screen display on a blue box. */
+.count-vhs {
+  font-family: var(--font-pixel);
+  font-size: min(30cqw, 180px);
+  line-height: 1;
+  color: #ffffff;
+  background: #1d3fbf;
+  padding: 0.05em 0.35em;
+  text-shadow: 0.05em 0.05em 0 rgb(0 0 0 / 0.6);
+}
+
+/* '25: printed on a strip of thermal paper. */
+.count-receipt {
+  font-family: var(--font-typewriter);
+  font-weight: 700;
+  font-size: min(26cqw, 150px);
+  line-height: 1;
+  color: #222120;
+  background: #f3f1ea;
+  padding: 0.12em 0.4em 0.18em;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.5);
+  clip-path: polygon(0 6%, 5% 0, 10% 6%, 15% 0, 20% 6%, 25% 0, 30% 6%, 35% 0, 40% 6%, 45% 0, 50% 6%, 55% 0, 60% 6%, 65% 0, 70% 6%, 75% 0, 80% 6%, 85% 0, 90% 6%, 95% 0, 100% 6%, 100% 94%, 95% 100%, 90% 94%, 85% 100%, 80% 94%, 75% 100%, 70% 94%, 65% 100%, 60% 94%, 55% 100%, 50% 94%, 45% 100%, 40% 94%, 35% 100%, 30% 94%, 25% 100%, 20% 94%, 15% 100%, 10% 94%, 5% 100%, 0 94%);
+}
+
+/* Live VHS scanlines over the camera view (the capture applies the real thing). */
+.live-scanlines {
+  background: repeating-linear-gradient(180deg, rgb(0 0 0 / 0.35) 0 2px, transparent 2px 4px);
+  mix-blend-mode: multiply;
+}
+
+/* Crop guides inside the booth: what will be kept (instant square, oval window). */
+.crop-guide-square {
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.5);
+  border: 2px dashed rgb(255 255 255 / 0.55);
+}
+
+.crop-guide-oval {
+  border-radius: 50%;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.55);
 }
 
 /* '04: orange seven-segment LCD. */

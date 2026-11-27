@@ -269,6 +269,7 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
                     { id: "auto", label: "Machine" },
                     { id: "square", label: "Square" },
                     { id: "rounded", label: "Rounded" },
+                    { id: "oval", label: "Oval" },
                   ]}
                 />
                 <OptionGroup
@@ -279,6 +280,19 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
                     { id: "auto", label: "Machine" },
                     { id: "footer", label: "Printed", title: "Printed under the caption" },
                     { id: "stamp", label: "Orange stamp", title: "Burned into each photo, like a disposable" },
+                    { id: "vhs", label: "VHS", title: "PLAY, time and date on screen, like a camcorder" },
+                  ]}
+                />
+                <OptionGroup
+                  label="Frame"
+                  value={settings.frame}
+                  onChange={(v) => set("frame", v)}
+                  options={[
+                    { id: "auto", label: "Machine" },
+                    { id: "plain", label: "Plain" },
+                    { id: "instant", label: "Instant cards", title: "Square photos, each on a white card" },
+                    { id: "receipt", label: "Receipt", title: "Header, barcode and torn edges" },
+                    { id: "ornate", label: "Ornate", title: "Fine double rule around each photo" },
                   ]}
                 />
                 <OptionGroup
@@ -312,6 +326,10 @@ export function Outside({ settings, onChange, onStart, onGallery }: Props) {
                   { id: "classic", label: "Classic" },
                   { id: "cute", label: "Cute" },
                   { id: "plastic", label: "Plastic" },
+                  { id: "victorian", label: "Victorian" },
+                  { id: "instant", label: "Instant" },
+                  { id: "vhs", label: "VHS" },
+                  { id: "thermal", label: "Thermal" },
                 ]}
               />
               <div className="flex flex-col gap-2 text-sm">

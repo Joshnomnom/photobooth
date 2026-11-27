@@ -36,7 +36,7 @@ The site is a building of rooms: **street → booth → darkroom → studio tabl
 | `components/Gallery.tsx` | The gallery: pinned strips with wall labels, archive of vintage strips |
 | `components/CameraBlocked.tsx` | "Booth closed" screen with per-browser steps |
 | `lib/look.ts` | Film look pipeline applied at capture (drift, color, vignette, halation, grain) |
-| `lib/machines.ts` | The machines ('62, '79, '98, '04): look, papers, strip style, sounds, colors |
+| `lib/machines.ts` | The eight machines ('1890 to '25): look, papers, strip style, sounds, colors; plus all papers and looks for mixing |
 | `lib/filters.ts` | Color matrix ops, shared by the CSS preview and the capture |
 | `lib/stickers.ts` | Sticker art drawn in code (die-cut look) |
 | `lib/decorations.ts` | Placed stickers + pen strokes model and drawing |
