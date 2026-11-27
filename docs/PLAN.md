@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (Phase 2 built)_
+_Last updated: 2026-11-27 (Phase 3 built, sounds redesigned)_
 
 ## Vision
 
@@ -123,15 +123,34 @@ Clean rebuild of the app (commit `0d1fc90`, branch `rework-booth`).
 - [ ] Tune each look on real faces (especially '04 flash/leak strength and '62 grain)
 - [ ] Check machine fonts load before the first strip on slow connections
 
-### Phase 3 · Decorate 💤
+### Phase 3 · Decorate ✅ (tune on real devices)
 
 **Goal: purikura-style play after the shoot.**
 
-- [ ] Sticker drawer (stickers we make ourselves; each machine has its own set)
-- [ ] Drag, scale and rotate stickers; pen tool with a few colors; stamped caption
-- [ ] Optional playful timer ("60 seconds to decorate!"), off by default
-- [ ] Undo / clear
-- [ ] Decorations baked into the export via the same renderer
+- [x] Decorating happens on the collected screen, right after "Take your strip" (no extra stage to click through)
+- [x] Sticker sheet per machine, all drawn in code with a die-cut white border (`lib/stickers.ts`): tape labels and typed "xoxo" ('62), daisy/rainbow/sun/peace/"groovy" ('79), hearts/crown/bunny ears/"BFF" ('98), bolt/shades/"LOL"/"OMG" ('04)
+- [x] Drag to move; one round handle turns and resizes; the sticker in hand comes to the front (`components/StripEditor.tsx`)
+- [x] Selected-sticker toolbar (smaller, bigger, turn, remove) and keyboard: arrows move, +/- resize, [ ] turn, Delete removes, Esc deselects
+- [x] Pen with machine colors, Fine/Bold; '98 and '04 pens get a white purikura glow
+- [x] Undo (50 steps) and Clear (also undoable)
+- [x] Optional 60-second "booth rules" challenge; time's up locks editing, with "Keep decorating" to continue
+- [x] Decorations drawn by the same strip renderer, so the download matches the screen (`lib/decorations.ts`)
+
+**Verified:** typecheck, lint; headless Chrome runs on '98 and '79: stickers added, sticker dragged with real mouse events, pen stroke drawn and undone, keyboard delete, timer, export; no console errors.
+
+**Still to check by hand:**
+- [ ] Touch dragging and the resize handle on a real phone
+- [ ] Sticker sizes and the sticker art itself
+
+### Sound redesign (done with Phase 3)
+
+The first synthesized kit was rated "awful" except the countdown tick. Rebuilt every sound on the tick's recipe:
+- [x] Clean, short tones; noise only as a tiny filtered texture
+- [x] One shared bus: high-cut 7.5 kHz → gentle compressor → a little room reverb
+- [x] New designs: two-note bell chime on Start, soft double click + low thump shutter (heavier on '62, arpeggio on '98, click + ratchet on '04), smooth motor hum in four pushes synced to the print animation, soft paper tap on drop
+- [x] Removed the curtain swish; '04 flash whine made much quieter
+- [x] Added: sticker "pop", "ready" chime when the strip finishes developing, time's-up chime
+- [ ] Listen and tune on real speakers/phones. If synthesis still feels fake, switch to short CC0 recordings
 
 ### Phase 4 · Keepsakes 💤
 
@@ -176,3 +195,5 @@ Clean rebuild of the app (commit `0d1fc90`, branch `rework-booth`).
 | 2026-11-27 | Machines replace the free Filter + Paper pickers; each machine offers 2–3 papers and its own layouts | A coherent era identity is the differentiator; free mixing dilutes it |
 | 2026-11-27 | '79 Color is the default machine | Warm color flatters most faces and lighting; the most broadly appealing first impression |
 | 2026-11-27 | Disposable date stamp drawn as real seven-segment digits, not a font | No suitable font on Google Fonts; drawing it keeps the look exact on canvas and in the countdown |
+| 2026-11-27 | Decorate on the collected screen instead of a separate stage | Keeps "download right away" one click away while making decorating the obvious next thing |
+| 2026-11-27 | Rebuilt all sounds from clean tones through one soft bus | Feedback: only the (clean, tonal) countdown tick sounded good; noise and sawtooth sounds read as harsh |

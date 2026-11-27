@@ -2,18 +2,25 @@
 
 /**
  * Synthesized booth sounds (Web Audio, no sample files).
+ *
+ * Design rule (after the first kit was too harsh): build everything from clean,
+ * short tones like the countdown tick. Noise is used only in tiny, filtered
+ * amounts. Every sound goes through one bus: high-cut → gentle compressor →
+ * a touch of room reverb, so they sit together instead of poking out.
+ *
  * Audio must be unlocked inside a click/tap handler; see docs/research/04-technical.md#web-audio.
  */
 
 import { useSyncExternalStore } from "react";
 
-export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "curtain" | "charge";
+export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "charge" | "pop" | "ready" | "timeup";
 
 /** Each machine has its own voice. See lib/machines.ts. */
 export type SoundProfile = "mechanical" | "classic" | "cute" | "plastic";
 
 const KEY = "snaproom:muted";
 let ctx: AudioContext | null = null;
+let bus: AudioNode | null = null;
 let noise: AudioBuffer | null = null;
 let muted = false;
 let loaded = false;
@@ -53,6 +60,44 @@ export function useMuted() {
   return useSyncExternalStore(subscribe, isMuted, () => false);
 }
 
+/** A short, dark room impulse: decaying stereo noise, smoothed. */
+function roomImpulse(c: AudioContext) {
+  const len = Math.floor(c.sampleRate * 0.7);
+  const ir = c.createBuffer(2, len, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    let prev = 0;
+    for (let i = 0; i < len; i++) {
+      const t = i / len;
+      const n = (Math.random() * 2 - 1) * (1 - t) ** 3;
+      prev = prev * 0.6 + n * 0.4; // simple low-pass so the tail isn't hissy
+      d[i] = prev;
+    }
+  }
+  return ir;
+}
+
+function buildBus(c: AudioContext) {
+  const input = c.createGain();
+  input.gain.value = 0.8;
+  const hiCut = c.createBiquadFilter();
+  hiCut.type = "lowpass";
+  hiCut.frequency.value = 7500;
+  const comp = c.createDynamicsCompressor();
+  comp.threshold.value = -20;
+  comp.ratio.value = 3;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.15;
+  input.connect(hiCut).connect(comp).connect(c.destination);
+
+  const verb = c.createConvolver();
+  verb.buffer = roomImpulse(c);
+  const wet = c.createGain();
+  wet.gain.value = 0.14;
+  comp.connect(verb).connect(wet).connect(c.destination);
+  return input;
+}
+
 /** Call synchronously from a click/tap handler. */
 export function unlockAudio() {
   try {
@@ -60,6 +105,7 @@ export function unlockAudio() {
       const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
       ctx = new AC();
+      bus = buildBus(ctx);
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") ctx?.resume().catch(() => {});
       });
@@ -72,6 +118,7 @@ export function unlockAudio() {
     src.start(0);
   } catch {
     ctx = null;
+    bus = null;
   }
 }
 
@@ -84,140 +131,156 @@ function noiseBuffer(c: AudioContext) {
   return noise;
 }
 
-function tone(c: AudioContext, start: number, dur: number, freq: number, gain: number, type: OscillatorType = "sine", freqEnd?: number) {
+type ToneOpts = { type?: OscillatorType; to?: number; attack?: number };
+
+/** A clean enveloped tone. The building block for almost everything. */
+function tone(c: AudioContext, out: AudioNode, start: number, dur: number, freq: number, gain: number, opts: ToneOpts = {}) {
   const osc = c.createOscillator();
   const g = c.createGain();
-  osc.type = type;
+  osc.type = opts.type ?? "sine";
   osc.frequency.setValueAtTime(freq, start);
-  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, start + dur);
+  if (opts.to) osc.frequency.exponentialRampToValueAtTime(opts.to, start + dur);
+  const attack = opts.attack ?? 0.004;
   g.gain.setValueAtTime(0.0001, start);
-  g.gain.exponentialRampToValueAtTime(gain, start + 0.005);
+  g.gain.exponentialRampToValueAtTime(gain, start + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  osc.connect(g).connect(c.destination);
+  osc.connect(g).connect(out);
   osc.start(start);
   osc.stop(start + dur + 0.02);
 }
 
-function hiss(c: AudioContext, start: number, dur: number, type: BiquadFilterType, freq: number, gain: number, q = 1) {
+/** A tiny touch of band-limited noise, for texture only. */
+function grit(c: AudioContext, out: AudioNode, start: number, dur: number, freq: number, gain: number, q = 2) {
   const src = c.createBufferSource();
   src.buffer = noiseBuffer(c);
   const f = c.createBiquadFilter();
-  f.type = type;
+  f.type = "bandpass";
   f.frequency.value = freq;
   f.Q.value = q;
   const g = c.createGain();
   g.gain.setValueAtTime(0.0001, start);
-  g.gain.exponentialRampToValueAtTime(gain, start + 0.004);
+  g.gain.exponentialRampToValueAtTime(gain, start + 0.003);
   g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  src.connect(f).connect(g).connect(c.destination);
+  src.connect(f).connect(g).connect(out);
   src.start(start, Math.random() * 0.5);
   src.stop(start + dur + 0.02);
 }
 
-function motor(c: AudioContext, start: number, dur: number, freq = 68, level = 0.07) {
+/** A soft bell: fundamental plus two inharmonic partials. */
+function bell(c: AudioContext, out: AudioNode, start: number, freq: number, gain: number, decay = 0.8) {
+  tone(c, out, start, decay, freq, gain, { attack: 0.006 });
+  tone(c, out, start, decay * 0.5, freq * 2.76, gain * 0.25, { attack: 0.004 });
+  tone(c, out, start, decay * 0.25, freq * 5.4, gain * 0.08, { attack: 0.003 });
+}
+
+/** A crisp, quiet mechanical click. */
+function click(c: AudioContext, out: AudioNode, start: number, gain = 1) {
+  tone(c, out, start, 0.012, 1900, 0.09 * gain, { attack: 0.001 });
+  grit(c, out, start, 0.02, 2600, 0.04 * gain, 3);
+}
+
+/** One push of the print motor: a smooth low hum with a gentle flutter. */
+function motorPush(c: AudioContext, out: AudioNode, start: number, dur: number, freq: number, level: number) {
   const osc = c.createOscillator();
-  osc.type = "sawtooth";
   osc.frequency.value = freq;
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 520;
+  lp.frequency.value = 420;
   const g = c.createGain();
   g.gain.setValueAtTime(0.0001, start);
-  g.gain.exponentialRampToValueAtTime(level, start + 0.12);
-  g.gain.setValueAtTime(level, start + dur - 0.2);
+  g.gain.exponentialRampToValueAtTime(level, start + 0.04);
+  g.gain.setValueAtTime(level, Math.max(start + 0.05, start + dur - 0.07));
   g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  // Wobble the level for a gear-train flutter.
   const lfo = c.createOscillator();
-  lfo.frequency.value = 19;
+  lfo.frequency.value = 26;
   const depth = c.createGain();
-  depth.gain.value = 0.025;
+  depth.gain.value = level * 0.35;
   lfo.connect(depth).connect(g.gain);
-  osc.connect(lp).connect(g).connect(c.destination);
+  osc.connect(lp).connect(g).connect(out);
   osc.start(start);
   lfo.start(start);
   osc.stop(start + dur + 0.05);
   lfo.stop(start + dur + 0.05);
-  hiss(c, start, dur, "bandpass", 900, 0.025, 0.7);
+  // Faint gear ticks over the hum.
+  for (let t = start + 0.05; t < start + dur - 0.05; t += 1 / 12) tone(c, out, t, 0.006, 1300, 0.012, { attack: 0.001 });
 }
 
-/** Ratchet clicks, like winding a disposable camera's thumbwheel. */
-function wind(c: AudioContext, start: number) {
-  for (let i = 0; i < 7; i++) hiss(c, start + i * 0.045, 0.018, "bandpass", 3200, 0.16, 3);
-}
+/** Matches the stepped @keyframes print-out in globals.css. */
+const PRINT_PUSHES: [number, number][] = [
+  [0, 0.2],
+  [0.24, 0.48],
+  [0.52, 0.76],
+  [0.8, 1],
+];
 
 export function play(name: SoundName, opts: { profile?: SoundProfile; duration?: number } = {}) {
-  if (!ctx || isMuted()) return;
+  if (!ctx || !bus || isMuted()) return;
   if (ctx.state !== "running") ctx.resume().catch(() => {});
   const c = ctx;
+  const out = bus;
   const t = c.currentTime + 0.01;
   const profile = opts.profile ?? "classic";
-  const duration = opts.duration ?? 2.8;
+  const duration = opts.duration ?? 3;
+
   switch (name) {
+    case "tick": {
+      // The one everybody liked. Profiles only shift the pitch.
+      const f = profile === "mechanical" ? 1050 : profile === "cute" ? 1600 : profile === "plastic" ? 1900 : 1320;
+      tone(c, out, t, 0.07, f, 0.1, profile === "cute" ? { to: f * 1.25 } : {});
+      break;
+    }
     case "coin":
-      tone(c, t, 0.3, 2637, 0.1, "triangle");
-      tone(c, t, 0.35, 3951, 0.04);
-      tone(c, t + 0.09, 0.4, 2093, 0.09, "triangle");
-      hiss(c, t + 0.28, 0.12, "lowpass", 600, 0.12);
-      tone(c, t + 0.3, 0.15, 90, 0.25, "sine", 50);
-      break;
-    case "tick":
-      if (profile === "mechanical") {
-        hiss(c, t, 0.025, "bandpass", 2400, 0.25, 2);
-        tone(c, t, 0.04, 700, 0.06);
-      } else if (profile === "cute") {
-        tone(c, t, 0.09, 900, 0.1, "sine", 1700);
-      } else if (profile === "plastic") {
-        tone(c, t, 0.05, 2200, 0.035, "square");
-      } else {
-        tone(c, t, 0.07, 1320, 0.1);
-      }
-      break;
-    case "charge":
-      // Flash capacitor whine (disposables).
-      tone(c, t, 1.4, 1800, 0.018, "sine", 5600);
+      // Two-note welcome chime, then the coin landing.
+      bell(c, out, t, 1568, 0.07, 0.7);
+      bell(c, out, t + 0.12, 2093, 0.06, 0.9);
+      tone(c, out, t + 0.24, 0.09, 140, 0.08, { to: 80 });
       break;
     case "shutter":
       if (profile === "cute") {
-        hiss(c, t, 0.05, "highpass", 4000, 0.12);
-        tone(c, t, 0.1, 1568, 0.09, "triangle");
-        tone(c, t + 0.07, 0.25, 2093, 0.08, "triangle");
-        tone(c, t + 0.12, 0.3, 3136, 0.03);
-        break;
-      }
-      if (profile === "plastic") {
-        hiss(c, t, 0.12, "highpass", 6500, 0.05);
-        hiss(c, t, 0.02, "highpass", 4000, 0.3);
-        tone(c, t, 0.025, 420, 0.12);
-        wind(c, t + 0.35);
-        break;
-      }
-      hiss(c, t, 0.12, "highpass", 6000, 0.06);
-      hiss(c, t, 0.03, "highpass", 2500, 0.3);
-      tone(c, t, 0.08, 150, 0.32, "sine", 60);
-      hiss(c, t + 0.07, 0.035, "bandpass", 1800, 0.28, 1.2);
-      tone(c, t + 0.07, 0.06, 115, 0.2, "sine", 55);
-      if (profile === "mechanical") {
-        // Heavier, slower mirror and a solenoid thunk.
-        tone(c, t + 0.12, 0.14, 85, 0.3, "sine", 40);
-        hiss(c, t + 0.13, 0.05, "lowpass", 900, 0.2);
+        // Sparkly arpeggio instead of a mechanism.
+        [1047, 1319, 1568, 2093].forEach((f, i) => bell(c, out, t + i * 0.05, f, 0.05, 0.35));
+      } else if (profile === "plastic") {
+        click(c, out, t, 0.9);
+        // Film-advance thumbwheel: soft ratchet ticks.
+        for (let i = 0; i < 6; i++) tone(c, out, t + 0.3 + i * 0.045, 0.006, 2800, 0.03, { attack: 0.001 });
+      } else {
+        const heavy = profile === "mechanical";
+        click(c, out, t);
+        tone(c, out, t, heavy ? 0.09 : 0.06, heavy ? 115 : 145, heavy ? 0.16 : 0.11, { to: heavy ? 55 : 70 });
+        click(c, out, t + (heavy ? 0.09 : 0.055), 0.8);
       }
       break;
-    case "whirr":
-      if (profile === "mechanical") motor(c, t, duration, 48, 0.09);
-      else if (profile === "cute") {
-        motor(c, t, duration, 120, 0.035);
-        tone(c, t + duration - 0.05, 0.25, 2637, 0.06, "triangle");
-        tone(c, t + duration + 0.08, 0.35, 3520, 0.05, "triangle");
-      } else if (profile === "plastic") motor(c, t, duration, 95, 0.05);
-      else motor(c, t, duration);
+    case "whirr": {
+      const freq = profile === "mechanical" ? 68 : profile === "cute" ? 140 : profile === "plastic" ? 110 : 88;
+      const level = profile === "cute" ? 0.035 : 0.055;
+      for (const [a, b] of PRINT_PUSHES) motorPush(c, out, t + a * duration, (b - a) * duration, freq, level);
+      if (profile === "cute") {
+        bell(c, out, t + duration, 2637, 0.04, 0.5);
+        bell(c, out, t + duration + 0.1, 3136, 0.035, 0.6);
+      }
       break;
+    }
     case "drop":
-      hiss(c, t, 0.06, "lowpass", 2400, 0.22);
-      tone(c, t, 0.06, 240, 0.08, "sine", 120);
+      tone(c, out, t, 0.05, 260, 0.07, { to: 140 });
+      grit(c, out, t, 0.03, 1200, 0.02, 1);
       break;
-    case "curtain":
-      hiss(c, t, 0.7, "bandpass", 1400, 0.05, 0.5);
-      hiss(c, t + 0.1, 0.5, "highpass", 3500, 0.025);
+    case "charge":
+      // Disposable flash charging: kept very quiet on purpose.
+      tone(c, out, t, 1.2, 700, 0.01, { to: 2200, attack: 0.2 });
+      break;
+    case "pop":
+      // Sticker placed.
+      tone(c, out, t, 0.06, 520, 0.07, { to: 900 });
+      tone(c, out, t + 0.02, 0.04, 1400, 0.02);
+      break;
+    case "ready":
+      // Strip developed.
+      bell(c, out, t, 1319, 0.05, 0.8);
+      bell(c, out, t + 0.1, 1760, 0.05, 1);
+      break;
+    case "timeup":
+      bell(c, out, t, 1047, 0.06, 0.6);
+      bell(c, out, t + 0.16, 784, 0.06, 0.9);
       break;
   }
 }

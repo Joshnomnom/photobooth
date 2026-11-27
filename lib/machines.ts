@@ -7,6 +7,7 @@
 import type { Filter } from "./filters";
 import type { FontKey } from "./fonts";
 import type { SoundProfile } from "./sound";
+import type { StickerKind } from "./stickers";
 
 export type Paper = {
   id: string;
@@ -68,6 +69,12 @@ export type Machine = {
   interior: string;
   /** Flash color inside the booth. */
   flash: string;
+  /** Sticker drawer for the decorate step. */
+  stickers: readonly StickerKind[];
+  /** Pen colors for the decorate step. */
+  pens: readonly string[];
+  /** White glow around pen lines (purikura style). */
+  penHalo: boolean;
 };
 
 export const MACHINES: readonly Machine[] = [
@@ -112,6 +119,9 @@ export const MACHINES: readonly Machine[] = [
     },
     interior: "#0d0f0e",
     flash: "#ffffff",
+    stickers: ["tape-smile", "tape-snap", "text-xoxo", "heart", "star", "arrow", "bubble-hi", "sparkle"],
+    pens: ["#1f1d1a", "#ffffff", "#b3261e"],
+    penHalo: false,
   },
   {
     id: "color-79",
@@ -155,6 +165,9 @@ export const MACHINES: readonly Machine[] = [
     },
     interior: "#120b07",
     flash: "#fff6e3",
+    stickers: ["flower", "rainbow", "sun", "peace", "text-groovy", "text-farout", "heart", "smiley"],
+    pens: ["#3b2414", "#fff1dc", "#e8862a", "#4f8a3c"],
+    penHalo: false,
   },
   {
     id: "sticker-98",
@@ -198,6 +211,9 @@ export const MACHINES: readonly Machine[] = [
     },
     interior: "#140a13",
     flash: "#fff0f7",
+    stickers: ["heart", "star", "sparkle", "crown", "ears", "text-bff", "text-cutie", "bubble-hi", "flower"],
+    pens: ["#ff4f8b", "#8a5cf6", "#2ec4b6", "#ffffff"],
+    penHalo: true,
   },
   {
     id: "disposable-04",
@@ -240,6 +256,9 @@ export const MACHINES: readonly Machine[] = [
     },
     interior: "#090c12",
     flash: "#ffffff",
+    stickers: ["bolt", "shades", "smiley", "text-lol", "text-omg", "star", "arrow", "heart"],
+    pens: ["#ffffff", "#111111", "#ff7a1a", "#2f7bff"],
+    penHalo: true,
   },
 ];
 

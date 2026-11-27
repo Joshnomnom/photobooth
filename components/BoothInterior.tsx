@@ -68,10 +68,7 @@ export function BoothInterior({ settings, shots, seed, onShot, onPrint, onExit }
   useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
-    if (live) {
-      play("curtain");
-      shutterRef.current?.focus();
-    }
+    if (live) shutterRef.current?.focus();
   }, [live]);
 
   const run = useCallback(async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { type Decorations, EMPTY_DECORATIONS } from "@/lib/decorations";
 import { CANVAS_FONTS } from "@/lib/fonts";
 import type { Shot } from "@/lib/look";
 import { randomSeed } from "@/lib/random";
@@ -12,7 +13,7 @@ import { Collected } from "./Collected";
 import { Outside } from "./Outside";
 import { PrintSlot } from "./PrintSlot";
 
-/** outside → booth → printing → collected. See docs/PLAN.md, Phase 1. */
+/** outside → booth → printing → collected (decorate + save). See docs/PLAN.md. */
 type Stage = "outside" | "booth" | "printing" | "collected";
 
 export function Booth() {
@@ -22,6 +23,7 @@ export function Booth() {
   const [seed, setSeed] = useState(1);
   const [caption, setCaption] = useState("");
   const [showDate, setShowDate] = useState(true);
+  const [decorations, setDecorations] = useState<Decorations>(EMPTY_DECORATIONS);
 
   const { machine, layout, paper } = resolve(settings);
 
@@ -56,6 +58,7 @@ export function Booth() {
     play("coin");
     setShots(Array(shotCount(layout)).fill(null));
     setSeed(randomSeed());
+    setDecorations(EMPTY_DECORATIONS);
     setStage("booth");
   }, [layout]);
 
@@ -80,7 +83,16 @@ export function Booth() {
       )}
       {stage === "printing" && <PrintSlot strip={strip} machine={machine} onCollect={toCollected} />}
       {stage === "collected" && (
-        <Collected strip={strip} onCaption={setCaption} onShowDate={setShowDate} onAgain={enterBooth} onSetup={toOutside} />
+        <Collected
+          strip={strip}
+          machine={machine}
+          decorations={decorations}
+          onDecorations={setDecorations}
+          onCaption={setCaption}
+          onShowDate={setShowDate}
+          onAgain={enterBooth}
+          onSetup={toOutside}
+        />
       )}
     </>
   );

@@ -50,7 +50,9 @@ export function PrintSlot({ strip, machine, onCollect }: Props) {
   }, []);
 
   useEffect(() => {
-    if (phase === "ready") collectRef.current?.focus();
+    if (phase !== "ready") return;
+    play("ready");
+    collectRef.current?.focus();
   }, [phase]);
 
   useEffect(() => {

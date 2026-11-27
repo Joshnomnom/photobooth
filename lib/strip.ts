@@ -1,3 +1,4 @@
+import { type Decorations, drawDecorations } from "./decorations";
 import type { FontKey, Fonts } from "./fonts";
 import { PHOTO_H, PHOTO_W } from "./look";
 import type { Paper, StripStyle } from "./machines";
@@ -33,6 +34,8 @@ export type StripOptions = {
   seed: number;
   /** Draw photo slots as blank, undeveloped paper (used for the print animation). */
   undeveloped?: boolean;
+  /** Stickers and pen strokes from the decorate step, drawn on top. */
+  decorations?: Decorations;
 };
 
 let paperTile: HTMLCanvasElement | null = null;
@@ -172,6 +175,8 @@ export function drawStrip(canvas: HTMLCanvasElement, opts: StripOptions) {
     ctx.globalAlpha = 1;
   }
   setSpacing("0px");
+
+  if (opts.decorations) drawDecorations(ctx, opts.decorations, fonts);
 }
 
 /** Orange seven-segment date, burned into the bottom-right of a photo. */
