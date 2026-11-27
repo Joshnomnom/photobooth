@@ -11,7 +11,7 @@
 
 import { useSyncExternalStore } from "react";
 
-export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "pop" | "ready" | "timeup";
+export type SoundName = "coin" | "tick" | "shutter" | "whirr" | "drop" | "pop" | "ready" | "timeup" | "switch";
 
 /** Each machine has its own voice. See lib/machines.ts. */
 export type SoundProfile = "mechanical" | "classic" | "cute" | "plastic";
@@ -28,6 +28,7 @@ const FILES = [
   "ready",
   "pop",
   "timeup",
+  "switch",
 ] as const;
 type FileName = (typeof FILES)[number];
 
@@ -177,7 +178,7 @@ function tick(c: AudioContext, out: AudioNode, at: number, freq: number, glide: 
   osc.stop(at + 0.09);
 }
 
-/** Matches the stepped @keyframes print-out in globals.css. */
+/** The print motor runs in short pushes as the strip feeds into the darkroom tray. */
 const PRINT_PUSHES: [number, number][] = [
   [0, 0.2],
   [0.24, 0.48],
@@ -235,6 +236,8 @@ export function play(name: SoundName, opts: { profile?: SoundProfile; duration?:
         return sample("ready", at, { gain: 0.7 });
       case "timeup":
         return sample("timeup", at, { gain: 0.7 });
+      case "switch":
+        return sample("switch", at, { gain: 0.9 });
     }
   };
 

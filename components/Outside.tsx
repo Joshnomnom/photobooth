@@ -6,6 +6,7 @@ import { type Settings, type Timer, resolve, withMachine } from "@/lib/settings"
 import { preloadSounds } from "@/lib/sound";
 import { layoutById, shotCount } from "@/lib/strip";
 import { BoothCabinet } from "./BoothCabinet";
+import { useWallCount } from "./Gallery";
 import { MuteButton } from "./MuteButton";
 import { OptionGroup } from "./OptionGroup";
 
@@ -13,10 +14,12 @@ type Props = {
   settings: Settings;
   onChange: (next: Settings) => void;
   onStart: () => void;
+  onGallery: () => void;
 };
 
 /** Outside: a row of booths to walk along (swipe on mobile), plus setup for the chosen one. */
-export function Outside({ settings, onChange, onStart }: Props) {
+export function Outside({ settings, onChange, onStart, onGallery }: Props) {
+  const pinned = useWallCount();
   const { machine, layout, paper } = resolve(settings);
   const index = MACHINES.findIndex((m) => m.id === machine.id);
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => onChange({ ...settings, [key]: value });
@@ -84,7 +87,7 @@ export function Outside({ settings, onChange, onStart }: Props) {
   };
 
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12">
+    <div className="room-enter grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12">
       {/* The row of booths */}
       <div className="min-w-0">
         <OptionGroup
@@ -124,7 +127,7 @@ export function Outside({ settings, onChange, onStart }: Props) {
             type="button"
             onClick={() => select(index - 1)}
             aria-label="Previous machine"
-            className="absolute left-0 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-lg shadow-md hover:bg-white sm:grid"
+            className="absolute left-0 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-lg shadow-md backdrop-blur hover:bg-ink/10 sm:grid"
           >
             ‹
           </button>
@@ -132,21 +135,32 @@ export function Outside({ settings, onChange, onStart }: Props) {
             type="button"
             onClick={() => select(index + 1)}
             aria-label="Next machine"
-            className="absolute right-0 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-lg shadow-md hover:bg-white sm:grid"
+            className="absolute right-0 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-lg shadow-md backdrop-blur hover:bg-ink/10 sm:grid"
           >
             ›
           </button>
         </div>
-        <p className="text-center text-xs text-muted">
-          <span className="sm:hidden">Swipe to walk along the booths. </span>Your camera stays on this device.
-        </p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted">
+            <span className="sm:hidden">Swipe to walk along the booths. </span>Your camera stays on this device.
+          </p>
+          <button
+            type="button"
+            onClick={onGallery}
+            className="group inline-flex items-center gap-3 rounded-full border border-line bg-card px-4 py-2 text-sm backdrop-blur transition hover:border-ink/40"
+          >
+            <span className="font-display text-base italic">The Gallery</span>
+            <span className="text-xs text-muted">{pinned > 0 ? `${pinned} on the wall` : "Next door"}</span>
+            <span aria-hidden className="transition group-hover:translate-x-0.5">→</span>
+          </button>
+        </div>
       </div>
 
       {/* Setup for the chosen machine */}
-      <section aria-labelledby="setup-title" className="rounded-2xl border border-line bg-card/70 p-5 sm:p-6">
+      <section aria-labelledby="setup-title" className="rounded-2xl border border-line bg-card p-5 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.8)] backdrop-blur-md sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">Set up your strip</p>
+            <p className="font-typewriter text-[11px] font-bold uppercase tracking-[0.2em] text-accent">Before you step in</p>
             <h2 id="setup-title" className="mt-1 font-display text-2xl">
               <span className="italic">{machine.year}</span> {machine.name}
             </h2>

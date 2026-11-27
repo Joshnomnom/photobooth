@@ -1,6 +1,6 @@
 # The Snap Room · Plan
 
-_Last updated: 2026-11-27 (art direction research)_
+_Last updated: 2026-11-27 (Phase 5 built)_
 
 ## Vision
 
@@ -177,22 +177,24 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 
 **Verified:** typecheck, lint; headless Chrome: pin → wall shows it; print sheet is 1200×1800 with a 300 dpi chunk; GIF decodes as 4 frames, infinite loop, ~0.2 s to build; wall dialog print and remove work; no console errors.
 
-### Phase 5 · Art direction ⏳ (direction chosen: building of rooms)
+### Phase 5 · Art direction: a building of rooms ✅ (tune on real devices)
 
-**Goal: from "a good app" to a piece of art.** One big idea that every screen, word, sound and motion serves. Research: [05-art-direction](research/05-art-direction.md).
+**Goal: from "a good app" to a piece of art.** Research: [05-art-direction](research/05-art-direction.md), assets: [06-real-assets](research/06-real-assets.md).
 
-**Proposed idea: a building of rooms.** Street (choose a machine) → Booth (shoot) → Darkroom (develop) → Studio table (decorate) → Gallery (the wall). Keywords: *nocturnal · chemical · handmade · exhibited*.
+- [x] Direction chosen: **building of rooms**. Keywords: *nocturnal · chemical · handmade · exhibited*
+- [x] Real assets: 15 CC0 photos/textures in `public/assets/` (credits in `public/assets/CREDITS.txt`); the darkroom timer cut out of its studio backdrop
+- [x] Room system: `<body data-room>` re-defines the color tokens per room, so every component takes the room's light; header/footer use `--room-chrome`; soft fade into each room (`globals.css` → "Rooms")
+- [x] **Street:** real rain-bokeh night backdrop; cabinets in machine paint over real brushed steel, real velvet curtain tinted per machine (luminosity blend), chrome bezels on coin slot and Start, a glass sample window with real vintage strips; setup panel as a dark "Before you step in" board; a door to the gallery
+- [x] **Booth:** interior curtain is the real velvet in the machine's color
+- [x] **Darkroom** (`components/Darkroom.tsx`): red safelight; strip feeds into a developer tray with a liquid sheen and develops from blank; real negatives on a drying line with clothespins; the real darkroom timer on the shelf; **"Lights on"** switch (real switch sound) reveals the true colors with one soft flash
+- [x] **Studio table:** green cutting-mat surface; panel is a taped-down sheet of real paper; sticker sheet with dashed die-cut slots; grease-pencil hints (Caveat)
+- [x] **Gallery** (`components/Gallery.tsx`, its own room): opens on the real empty-gallery photo with wall text; strips hung under track lights with museum wall labels (No. 001 · *Untitled (4 poses)*, 2026 · machine · "Collection of the sitter"); "From the archive" corner with the real vintage strips
+- [x] In-world copy: "A photo booth on a rainy street. Open all night." · "Before you step in" · "Developing… don't open the door." · "Lights on" · "On the studio table" · "Hung in the gallery" · "Take it down"
+- [x] Fixed along the way: font variables referenced themselves (next/font and Tailwind theme shared names); gallery link disappeared after other keep actions
+- [ ] Real devices: performance of the street backdrop and blend modes on low-end phones; Safari rendering of the luminosity blend
+- [ ] Room-to-room door sound (no fitting CC0 recording found yet)
 
-- [x] Choose the direction: **building of rooms** (over darkroom-only, zine, or gallery-only)
-- [x] Real assets sourced: 15 CC0 photos/textures in `public/assets/` (curtains, brushed metal, chrome, vintage booth strips, darkroom timer, film negatives, rain-bokeh street, gallery wall, paper, cork). Map: [06-real-assets](research/06-real-assets.md); credits: `public/assets/CREDITS.txt`
-- [ ] Mood board + type pairing per room; color and light per room
-- [ ] **Street:** rain-bokeh night backdrop, booths skinned with real brushed metal/chrome/velvet, real vintage strips in each sample window; setup panel restyled as a sign or menu board
-- [ ] **Darkroom:** safelight-red room, strip rises in a developer tray, the real darkroom timer sweeping, film negatives on the drying line, chemistry sounds
-- [ ] **Studio table:** cutting-mat surface, stickers on a backing sheet, tape and grease-pencil tools
-- [ ] **Gallery:** opens on the real empty-gallery photo; white-wall exhibition for pinned strips, wall labels on aged paper, catalogue numbers
-- [ ] Room-to-room transitions (door, light switch) with reduced-motion fades
-- [ ] In-world copy pass across every screen
-- [ ] Keep: every control still clear and accessible; contrast checks on dark rooms
+**Verified:** typecheck, lint; headless Chrome runs through every room (street → booth → darkroom → lights on → table → gallery), all four machines, decorating, pin/print/GIF, gallery open/print/take down, mobile, camera denied; no console errors.
 
 ### Explicitly out of scope
 
@@ -233,3 +235,5 @@ The first synthesized kit was rated "awful" except the countdown tick. Rebuilt e
 | 2026-11-27 | The wall is opt-in ("Pin to wall") and local-only | Keeps the privacy promise: nothing is stored unless the visitor asks, and never off the device |
 | 2026-11-27 | Own GIF encoder instead of a dependency | ~250 lines, no bundle weight from a library, full control of the palette and dithering |
 | 2026-11-27 | Art direction: "a building of rooms" (street → booth → darkroom → studio table → gallery) | One big idea that maps onto the existing stages, uses the name literally, and ties into booth art history |
+| 2026-11-27 | Gallery becomes its own room; the corkboard wall is retired | The gallery is the end of the photo's journey in the rooms concept, and wall labels need space |
+| 2026-11-27 | "Lights on" is a button, not automatic | The reveal of real color is the payoff; giving the visitor the switch makes it theirs |

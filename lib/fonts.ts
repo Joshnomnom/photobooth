@@ -1,4 +1,4 @@
-import { Courier_Prime, Fraunces, Fredoka, Inter, Shrikhand } from "next/font/google";
+import { Caveat, Courier_Prime, Fraunces, Fredoka, Inter, Shrikhand } from "next/font/google";
 
 export const display = Fraunces({
   subsets: ["latin"],
@@ -17,7 +17,7 @@ export const body = Inter({
 export const typewriter = Courier_Prime({
   subsets: ["latin"],
   weight: ["400", "700"],
-  variable: "--font-typewriter",
+  variable: "--nf-typewriter",
   display: "swap",
 });
 
@@ -25,7 +25,7 @@ export const typewriter = Courier_Prime({
 export const groovy = Shrikhand({
   subsets: ["latin"],
   weight: "400",
-  variable: "--font-groovy",
+  variable: "--nf-groovy",
   display: "swap",
 });
 
@@ -33,11 +33,19 @@ export const groovy = Shrikhand({
 export const rounded = Fredoka({
   subsets: ["latin"],
   weight: ["500", "700"],
-  variable: "--font-rounded",
+  variable: "--nf-rounded",
   display: "swap",
 });
 
-export const fontVariables = [display, body, typewriter, groovy, rounded].map((f) => f.variable).join(" ");
+/** Studio table: grease-pencil handwriting for notes and hints. */
+export const hand = Caveat({
+  subsets: ["latin"],
+  weight: ["600"],
+  variable: "--nf-hand",
+  display: "swap",
+});
+
+export const fontVariables = [display, body, typewriter, groovy, rounded, hand].map((f) => f.variable).join(" ");
 
 /** Resolved font families for canvas drawing. */
 export const CANVAS_FONTS = {

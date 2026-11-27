@@ -11,11 +11,22 @@ import { shotCount, type StripOptions } from "@/lib/strip";
 import { BoothInterior } from "./BoothInterior";
 import { Collected } from "./Collected";
 import { Outside } from "./Outside";
-import { PrintSlot } from "./PrintSlot";
-import { Wall } from "./Wall";
+import { Darkroom } from "./Darkroom";
+import { Gallery } from "./Gallery";
 
-/** outside → booth → printing → collected (decorate + save). See docs/PLAN.md. */
-type Stage = "outside" | "booth" | "printing" | "collected";
+/**
+ * The building of rooms (docs/research/05-art-direction.md):
+ * street (outside) → booth → darkroom (printing) → studio table (collected), plus the gallery.
+ */
+type Stage = "outside" | "booth" | "printing" | "collected" | "gallery";
+
+const ROOM: Record<Stage, string> = {
+  outside: "street",
+  booth: "street",
+  printing: "street",
+  collected: "table",
+  gallery: "gallery",
+};
 
 export function Booth() {
   const [stage, setStage] = useState<Stage>("outside");
@@ -42,7 +53,12 @@ export function Booth() {
     [layout, paper, machine, shots, caption, showDate, seed],
   );
 
-  // The booth and print slot are full-screen; keep the page behind them still.
+  // Each room sets its own light on the page (see "Rooms" in globals.css).
+  useEffect(() => {
+    document.body.dataset.room = ROOM[stage];
+  }, [stage]);
+
+  // The booth and darkroom are full-screen; keep the page behind them still.
   const immersive = stage === "booth" || stage === "printing";
   useEffect(() => {
     if (!immersive) return;
@@ -67,7 +83,14 @@ export function Booth() {
     setShots((prev) => prev.map((s, i) => (i === slot ? shot : s)));
   }, []);
 
-  const toOutside = useCallback(() => setStage("outside"), []);
+  const toOutside = useCallback(() => {
+    setStage("outside");
+    window.scrollTo({ top: 0 });
+  }, []);
+  const toGallery = useCallback(() => {
+    setStage("gallery");
+    window.scrollTo({ top: 0 });
+  }, []);
   const toPrinting = useCallback(() => setStage("printing"), []);
   const toCollected = useCallback(() => {
     setStage("collected");
@@ -77,13 +100,13 @@ export function Booth() {
   return (
     <>
       {(stage === "outside" || stage === "booth") && (
-        <Outside settings={settings} onChange={setSettings} onStart={enterBooth} />
+        <Outside settings={settings} onChange={setSettings} onStart={enterBooth} onGallery={toGallery} />
       )}
-      {stage === "outside" && <Wall />}
+      {stage === "gallery" && <Gallery onBack={toOutside} />}
       {stage === "booth" && (
         <BoothInterior settings={settings} shots={shots} seed={seed} onShot={onShot} onPrint={toPrinting} onExit={toOutside} />
       )}
-      {stage === "printing" && <PrintSlot strip={strip} machine={machine} onCollect={toCollected} />}
+      {stage === "printing" && <Darkroom strip={strip} machine={machine} onCollect={toCollected} />}
       {stage === "collected" && (
         <Collected
           strip={strip}
@@ -94,6 +117,7 @@ export function Booth() {
           onShowDate={setShowDate}
           onAgain={enterBooth}
           onSetup={toOutside}
+          onGallery={toGallery}
         />
       )}
     </>

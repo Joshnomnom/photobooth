@@ -16,8 +16,8 @@ paper-slide.wav, paper-place.wav
   From Kenney "Casino Audio" (card-slide-3, card-place-1), CC0
   https://kenney.nl/assets/casino-audio
 
-ready.wav, pop.wav, timeup.wav, sparkle.wav
-  From Kenney "Interface Sounds" (confirmation_001, drop_002, question_001, glass_002), CC0
+ready.wav, pop.wav, timeup.wav, sparkle.wav, switch.wav
+  From Kenney "Interface Sounds" (confirmation_001, drop_002, question_001, glass_002, switch_002), CC0
   https://kenney.nl/assets/interface-sounds
 
 Credit isn't required by CC0, but thank you to Kenney and the OpenGameArt contributors.

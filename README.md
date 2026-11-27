@@ -20,19 +20,19 @@ npm run build
 
 ## Structure
 
-The session moves through four stages: **outside → booth → printing → collected**.
+The site is a building of rooms: **street → booth → darkroom → studio table**, plus **the gallery**.
 
 | Path | What it does |
 | --- | --- |
 | `components/Booth.tsx` | Stage orchestrator, session state |
-| `components/Outside.tsx` | Row of booths (swipe/scroll) + setup panel |
+| `components/Outside.tsx` | The street: row of booths (swipe/scroll), setup board, gallery door |
 | `components/BoothCabinet.tsx` | One booth's exterior, colored by its machine |
 | `components/Countdown.tsx` | Per-machine countdown styles, incl. seven-segment LCD |
 | `components/BoothInterior.tsx` | Full-screen booth: curtain, camera, countdown, flash, capture sequence |
-| `components/PrintSlot.tsx` | Strip prints out of the slot and develops |
-| `components/Collected.tsx` | Decorate (stickers, pen, undo, timer), caption, download, share, go again |
+| `components/Darkroom.tsx` | Red-lit darkroom: strip develops in a tray, then "Lights on" |
+| `components/Collected.tsx` | The studio table: decorate (stickers, pen, undo, timer), caption, download, keep |
 | `components/StripEditor.tsx` | Editable strip canvas: drag, turn/resize handle, pen, keyboard |
-| `components/Wall.tsx` | Scrapbook wall of pinned strips (corkboard + detail dialog) |
+| `components/Gallery.tsx` | The gallery: pinned strips with wall labels, archive of vintage strips |
 | `components/CameraBlocked.tsx` | "Booth closed" screen with per-browser steps |
 | `lib/look.ts` | Film look pipeline applied at capture (drift, color, vignette, halation, grain) |
 | `lib/machines.ts` | The machines ('62, '79, '98, '04): look, papers, strip style, sounds, colors |

@@ -23,7 +23,7 @@ Sourced 2026-11-27. Real photos and textures to mix into the "building of rooms"
 | `metal-chrome.webp` | Ribbed chrome | **Booth exterior**: bezels around the coin slot, Start button and print slot |
 | `booth-strip-vintage.webp` | Real vintage 4-pose strip (four women, early 20th c.) | **Booth exterior**: the sample-photo window real booths have |
 | `booth-strip-a.webp`, `booth-strip-b.webp` | Real vintage strips (a man in a hat, mid-20th c.) | **Booth exterior** sample window; **gallery** "from the archive" corner |
-| `darkroom-timer.webp` | A real darkroom timer from a photographer's studio (Smithsonian) | **Darkroom**: on the shelf; its hand can sweep while the strip develops |
+| `darkroom-timer.webp` | A real darkroom timer from a photographer's studio (Smithsonian), cut out of its grey studio backdrop (transparent WebP) | **Darkroom**: on the shelf |
 | `film-strip.webp` | 35 mm negatives with sprocket holes and edge marks | **Darkroom**: hung on the drying line; film-edge motif |
 | `paper-old.webp` | Aged paper | **Studio table**: sticker backing sheet, labels, wall labels in the gallery |
 | `gallery-wall.webp` | Empty gallery room with blank frames | **Gallery**: the opening view of the wall page |

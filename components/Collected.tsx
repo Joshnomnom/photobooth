@@ -22,12 +22,13 @@ type Props = {
   onShowDate: (show: boolean) => void;
   onAgain: () => void;
   onSetup: () => void;
+  onGallery: () => void;
 };
 
 const CHALLENGE_SECONDS = 60;
 
 /** The strip in your hands: decorate it (purikura style), caption it, save it, or go again. */
-export function Collected({ strip, machine, decorations, onDecorations, onCaption, onShowDate, onAgain, onSetup }: Props) {
+export function Collected({ strip, machine, decorations, onDecorations, onCaption, onShowDate, onAgain, onSetup, onGallery }: Props) {
   const [canShare, setCanShare] = useState(false);
   const [error, setError] = useState("");
   const [tool, setTool] = useState<Tool>("stickers");
@@ -133,7 +134,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
         );
         const data = { machineId: machine.id, layoutId: strip.layout.id, caption: strip.caption, width: c.width, height: c.height, blob };
         setPinnedId(await pinStrip(data, pinnedId ?? undefined));
-        setKeepMsg(pinnedId ? "Updated on your wall." : "Pinned to your wall. Find it on the booth page.");
+        setKeepMsg(pinnedId ? "Updated in the gallery." : "Hung in the gallery.");
       } else if (kind === "print") {
         downloadBlob(await printSheet(await renderFinal()), `${fileStamp()}-print-4x6.png`);
         setKeepMsg("Print it as a 4×6 photo. Strips come two to a sheet: cut down the dotted line.");
@@ -181,8 +182,11 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
     }`;
 
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
+    <div className="room-enter grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
       <div className="strip-land relative min-w-0 lg:sticky lg:top-6">
+        <p className="room-chrome mb-3 text-center font-hand text-2xl -rotate-1" aria-hidden>
+          {tool === "pen" ? "draw right on it ✎" : "drag stickers, twist the round handle ↻"}
+        </p>
         <StripEditor
           strip={strip}
           decorations={decorations}
@@ -209,14 +213,14 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
             </div>
           </div>
         )}
-        <p className="mt-3 text-center text-xs text-muted">
-          {tool === "pen" ? "Draw right on your strip." : "Drag stickers to move them. Use the round handle to turn and resize."}
-        </p>
+        <p className="room-chrome-muted mt-3 text-center text-xs">Keyboard: select a sticker, then arrows move, + and − resize, [ and ] turn, Delete removes.</p>
       </div>
 
-      <section aria-labelledby="collected-title" className="space-y-6 rounded-2xl border border-line bg-card/70 p-5 sm:p-6">
+      <section aria-labelledby="collected-title" className="paper-sheet relative space-y-6 rounded-[3px] p-5 sm:p-6">
+        <span className="tape-corner -left-5 -top-2 -rotate-[24deg]" aria-hidden />
+        <span className="tape-corner -right-5 -top-2 rotate-[22deg]" aria-hidden />
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">Fresh out of the booth</p>
+          <p className="font-typewriter text-[11px] font-bold uppercase tracking-[0.2em] text-accent">On the studio table</p>
           <h2 id="collected-title" className="mt-1 font-display text-3xl">
             Decorate your strip
           </h2>
@@ -253,7 +257,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
                   disabled={locked}
                   title={stickerLabel(kind)}
                   aria-label={`Add ${stickerLabel(kind)} sticker`}
-                  className="grid aspect-square place-items-center rounded-xl border border-line bg-card transition hover:-translate-y-0.5 hover:border-ink/30 hover:shadow-md disabled:opacity-40"
+                  className="grid aspect-square place-items-center rounded-lg border border-dashed border-ink/20 bg-white transition hover:-translate-y-0.5 hover:border-ink/40 hover:shadow-md disabled:opacity-40"
                 >
                   <StickerIcon kind={kind} fonts={strip.fonts} />
                 </button>
@@ -389,6 +393,11 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
           <p className="mt-2 min-h-4 text-xs text-muted" aria-live="polite">
             {keepMsg}
           </p>
+          {pinnedId && (
+            <button type="button" onClick={onGallery} className="mt-1 text-xs font-semibold text-ink underline underline-offset-2">
+              Visit the gallery →
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 text-sm">
@@ -396,7 +405,7 @@ export function Collected({ strip, machine, decorations, onDecorations, onCaptio
             Take another
           </button>
           <button type="button" onClick={onSetup} className="h-10 px-2 text-muted underline-offset-4 hover:text-ink hover:underline">
-            Change setup
+            Back to the street
           </button>
         </div>
         <p className="text-xs text-muted">Nothing is uploaded. Download it, or pin it to the wall saved in this browser.</p>

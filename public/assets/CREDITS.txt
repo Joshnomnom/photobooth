@@ -2,7 +2,7 @@ Images used by The Snap Room
 
 All images are CC0 1.0 (public domain dedication): https://creativecommons.org/publicdomain/zero/1.0/
 They were found through Openverse (https://openverse.org) with the CC0/public-domain filter,
-then resized and re-encoded to WebP. No attribution is required, but credit is given where known.
+then resized and re-encoded to WebP (darkroom-timer.webp was also cut out of its backdrop). No attribution is required, but credit is given where known.
 
 booth-strip-a.webp
   "Photo Booth (n.d.)" by vernacularwench
