@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "_legacy/**",
   ]),
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

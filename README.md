@@ -1,25 +1,33 @@
 # The Snap Room
 
-A cute, privacy-first browser photobooth built with Next.js. Choose a crayon color theme, camera filter, and hand-drawn frame; capture three photos; then download the finished strip locally.
+A private photo booth that runs entirely in the browser. Pick a layout, filter and frame, take your shots, then download (or share) the finished strip as a PNG. Nothing is uploaded or stored.
 
-## Local development
+## Develop
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` and allow camera access when prompted.
+Open http://localhost:3000 and allow camera access. Browsers only allow camera access over HTTPS or on `localhost`.
 
-## Checks
+## Check
 
 ```bash
-npm run lint
+npm run check   # typecheck + lint
 npm run build
 ```
 
-## Deploy on Vercel
+## Structure
 
-Import this repository into Vercel. The default Next.js settings work without environment variables or a backend.
+| Path | What it does |
+| --- | --- |
+| `components/Booth.tsx` | The booth UI: camera, capture loop, settings, export |
+| `components/StripPreview.tsx` | Live strip preview |
+| `lib/strip.ts` | Layouts, frames, photo capture and strip rendering (shared by the preview and the download) |
+| `lib/filters.ts` | Filters, defined once and used for both the CSS preview and the pixel-level capture (works in Safari) |
+| `lib/useCamera.ts` | Camera lifecycle, device switching, error messages |
 
-Camera access requires HTTPS in production; Vercel provides HTTPS automatically.
+## Deploy
+
+It's a plain Next.js app with no backend or environment variables, so it deploys to Vercel as-is.
